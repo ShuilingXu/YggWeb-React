@@ -1,0 +1,109 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 6px 12px;
+  line-height: 1.5;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  min-height: 38px;
+  font-weight: 400;
+  vertical-align: middle;
+}
+.primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border-color: var(--color-accent);
+}
+.secondary {
+  background: var(--color-soft);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.danger {
+  background: var(--color-danger);
+  color: var(--color-white);
+  border-color: var(--color-danger);
+}
+.button:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.field {
+  display: grid;
+  gap: 4px;
+}
+.field label {
+  display: grid;
+  gap: 8px;
+}
+.control {
+  display: block;
+  font-weight: 400;
+}
+.notice {
+  padding: 12px 20px;
+  border: 1px solid var(--color-border);
+  border-left: 5px solid var(--color-navbar);
+  border-radius: 4px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+}
+.error {
+  color: var(--color-danger);
+  border-left-color: var(--color-danger);
+}
+.success {
+  border-left-color: var(--color-success);
+}
+.empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 32px 16px;
+  gap: 12px;
+  color: var(--color-text-muted);
+}
+.dialog {
+  padding: 0;
+  width: min(500px, calc(100% - 32px));
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  max-height: 85vh;
+  overflow: auto;
+  box-shadow: var(--shadow);
+}
+.dialog::backdrop {
+  background: var(--color-overlay);
+}
+.dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  padding: 16px;
+}
+.dialog h2 {
+  font-size: 20px;
+}
+.dialog > header button {
+  background: transparent;
+  border: 0;
+  font-size: 24px;
+  color: var(--color-text-muted);
+  padding: 0 4px;
+}
+.dialogBody {
+  padding: 16px;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+  font-size: 14px;
+}

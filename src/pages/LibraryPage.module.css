@@ -1,0 +1,152 @@
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.heading h1 {
+  font-size: var(--font-title);
+  font-weight: 400;
+  margin: 0;
+}
+.heading > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-md);
+}
+.box {
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.body {
+  padding: var(--space-4);
+}
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.search {
+  display: flex;
+  max-width: 100%;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+.search select {
+  width: auto;
+  max-width: 140px;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.search input[type='search'] {
+  width: 180px;
+  min-width: 80px;
+  flex: 1;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+}
+.search button {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+.sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.sort button,
+.sort > a {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-olive);
+  background: var(--color-olive);
+  color: var(--color-on-accent);
+  line-height: 1.5;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sort button:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.sort > a:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.sort .sortActive {
+  box-shadow: inset 0 0 0 2px var(--color-text-muted);
+}
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+.skeleton {
+  width: 245px;
+  max-width: 100%;
+  height: 290px;
+  background: var(--color-preview);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.pagination {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+.pagination nav {
+  margin-top: 0;
+}
+.closetLayout {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+}
+.tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--color-accent);
+  padding: var(--space-1) var(--space-1) 0;
+  gap: var(--space-1);
+}
+.tabs button,
+.tabs a {
+  border: 0;
+  background: transparent;
+  color: var(--color-on-accent);
+  padding: var(--space-2) var(--space-4);
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.tabs .active {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.apply {
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+.apply label {
+  display: grid;
+  gap: var(--space-2);
+}
+.applyButtons {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+@media (min-width: 768px) {
+  .closetLayout {
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  }
+}

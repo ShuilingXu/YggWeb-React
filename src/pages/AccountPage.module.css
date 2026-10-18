@@ -1,0 +1,70 @@
+.columns {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+.card {
+  padding: 0;
+  overflow: hidden;
+}
+.header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+.header h2 {
+  font-size: 18px;
+  font-weight: 400;
+}
+.primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.warning {
+  background: var(--color-warning);
+  color: var(--color-text);
+}
+.danger {
+  background: var(--color-danger);
+  color: var(--color-on-accent);
+}
+.body {
+  padding: 20px;
+}
+.footer {
+  padding: 12px 20px;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+.profile {
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--color-soft);
+  color: var(--color-accent);
+  font-size: 32px;
+  border: 3px solid var(--color-border);
+}
+.details {
+  margin: 16px 0 0;
+  text-align: left;
+}
+.details dt {
+  margin-top: 12px;
+  font-weight: 600;
+}
+.details dd {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+@media (min-width: 768px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
