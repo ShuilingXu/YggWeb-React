@@ -1,266 +1,431 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { listAudit, listReports, listUsers, resolveReport } from '../api/admin'
-import type { Account, AuditEvent, Report } from '../api/types'
-import { Button, Dialog, EmptyState, Field, Notice } from '../components/UI'
-import { t } from '../i18n/zh-CN'
-import { ReportsView } from './ReportsView'
-import { UsersTable } from './UsersTable'
+import { useState } from 'react'
 import { errorMessage } from '../api/client'
-import { AdminEditor } from './AdminEditor'
-import { AuditTable } from './AuditTable'
-import { TextureImage } from '../components/TextureImage'
-import { TextureModeration } from './TextureModeration'
-import styles from './Admin.module.css'
+import {
+  ACCOUNT_STATE,
+  PERMISSION,
+  REPORT_RESOLUTION,
+  TEXTURE_STATE,
+  accountStateLabel,
+  accountStateTone,
+  auditActionLabel,
+  auditResultLabel,
+  auditResultTone,
+  permissionLabel,
+  permissionTone,
+  reportStateLabel,
+  reportStateTone,
+} from '../api/enums'
+import {
+  ADMIN_PAGE_SIZE,
+  fetchAudit,
+  fetchReports,
+  fetchUsers,
+  resolveReport,
+  updateUser,
+} from '../api/resources'
+import type { Account, Report } from '../api/types'
+import { useAuth } from '../components/AuthProvider'
+import {
+  Badge,
+  Button,
+  Dialog,
+  EmptyState,
+  ErrorState,
+  Field,
+  Notice,
+  Tabs,
+  useToast,
+} from '../components/ui'
+import { t } from '../i18n/zh-CN'
+import { formatDate, formatDateTime, shortId } from '../lib/format'
+import { href, navigate, type AdminTab } from '../lib/router'
+import { useAsync, useSubmit } from '../lib/useAsync'
 
-type Section = 'users' | 'reports' | 'audit'
-const pageSize = 50
-
-export function AdminPage({ section, account }: { section: Section; account: Account }) {
-  return <AdminSection key={section} section={section} account={account} />
-}
-
-function AdminSection({ section, account }: { section: Section; account: Account }) {
-  const [users, setUsers] = useState<Account[]>([])
-  const [reports, setReports] = useState<Report[]>([])
-  const [events, setEvents] = useState<AuditEvent[]>([])
-  const [offset, setOffset] = useState(0)
-  const [version, setVersion] = useState(0)
-  const [busy, setBusy] = useState(true)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const [editing, setEditing] = useState<Account | null>(null)
-  const [selected, setSelected] = useState<Report | null>(null)
-  const [processing, setProcessing] = useState<Report | null>(null)
-  const [note, setNote] = useState('')
-  const [resolution, setResolution] = useState<1 | 2>(1)
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
-
-  useEffect(() => {
-    const controller = new AbortController()
-    setBusy(true)
-    setError('')
-    async function load() {
-      try {
-        if (section === 'users') {
-          const data = await listUsers(offset, controller.signal)
-          if (!controller.signal.aborted) setUsers(data)
-        } else if (section === 'reports') {
-          const data = await listReports(offset, controller.signal)
-          if (!controller.signal.aborted) setReports(data)
-        } else {
-          const data = await listAudit(offset, controller.signal)
-          if (!controller.signal.aborted) setEvents(data)
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) setError(errorMessage(error))
-      } finally {
-        if (!controller.signal.aborted) setBusy(false)
-      }
-    }
-    void load()
-    return () => {
-      controller.abort()
-    }
-  }, [section, offset, version])
-
-  function saved() {
-    setMessage(t('admin.saved'))
-    setEditing(null)
-    setProcessing(null)
-    setVersion((value) => value + 1)
-  }
-  function openReport(report: Report) {
-    setProcessing(report)
-    setNote('')
-    setResolution(1)
-    setSaveError('')
-  }
-  async function processReport(event: FormEvent) {
-    event.preventDefault()
-    if (!processing) return
-    setSaving(true)
-    setSaveError('')
-    try {
-      await resolveReport(
-        processing.id,
-        resolution === 1 ? { resolution: 1, state: 1, note } : { resolution: 2, note },
-      )
-      saved()
-    } catch (error) {
-      setSaveError(errorMessage(error))
-    } finally {
-      setSaving(false)
-    }
-  }
-  const count =
-    section === 'users' ? users.length : section === 'reports' ? reports.length : events.length
-  const footer = (
-    <div className={styles.footer}>
-      <nav className={styles.actions} aria-label={t('common.pagination')}>
-        <Button
-          variant="secondary"
-          disabled={offset === 0}
-          onClick={() => setOffset((value) => Math.max(0, value - pageSize))}
-        >
-          {t('common.previous')}
-        </Button>
-        <span className={styles.pageNumber} aria-current="page">
-          {t('admin.page', { page: Math.floor(offset / pageSize) + 1 })}
-        </span>
-        <Button
-          variant="secondary"
-          disabled={count < pageSize}
-          onClick={() => setOffset((value) => value + pageSize)}
-        >
-          {t('common.next')}
-        </Button>
-      </nav>
+export function AdminPage({ tab }: { tab: AdminTab }) {
+  return (
+    <div className="container">
+      <div className="page">
+        <div className="page__head">
+          <div>
+            <h1 className="page__title">{t('admin.title')}</h1>
+            <p className="page__sub">{t('admin.sub')}</p>
+          </div>
+        </div>
+        <Tabs
+          label={t('admin.title')}
+          value={tab}
+          onChange={(value) => navigate(`/admin/${value}`, { replace: true })}
+          tabs={[
+            { value: 'users', label: t('admin.tab.users') },
+            { value: 'reports', label: t('admin.tab.reports') },
+            { value: 'audit', label: t('admin.tab.audit') },
+          ]}
+        />
+        {tab === 'users' ? <UsersPanel /> : tab === 'reports' ? <ReportsPanel /> : <AuditPanel />}
+      </div>
     </div>
   )
-  const empty = <EmptyState title={t('admin.empty')} description={t('admin.emptyHelp')} />
+}
+
+function AdminPager({
+  offset,
+  count,
+  onChange,
+}: {
+  offset: number
+  count: number
+  onChange: (offset: number) => void
+}) {
+  return (
+    <div className="pager">
+      <button
+        type="button"
+        className="pager__btn"
+        disabled={offset === 0}
+        onClick={() => onChange(Math.max(0, offset - ADMIN_PAGE_SIZE))}
+      >
+        {t('common.prev')}
+      </button>
+      <span className="pager__info">{Math.floor(offset / ADMIN_PAGE_SIZE) + 1}</span>
+      <button
+        type="button"
+        className="pager__btn"
+        disabled={count < ADMIN_PAGE_SIZE}
+        onClick={() => onChange(offset + ADMIN_PAGE_SIZE)}
+      >
+        {t('common.next')}
+      </button>
+    </div>
+  )
+}
+
+function UsersPanel() {
+  const auth = useAuth()
+  const { notify } = useToast()
+  const [offset, setOffset] = useState(0)
+  const [pending, setPending] = useState<string | null>(null)
+  const list = useAsync((signal) => fetchUsers(offset, signal), [offset])
+
+  async function patch(user: Account, input: { state: 0 | 1; permission: 0 | 1 }): Promise<void> {
+    setPending(user.id)
+    try {
+      await updateUser(user.id, input)
+      notify('ok', t('admin.users.updated'))
+      list.reload()
+    } catch (error) {
+      notify('error', errorMessage(error))
+    } finally {
+      setPending(null)
+    }
+  }
+
+  const items = list.data ?? []
 
   return (
-    <div className={styles.page}>
-      <div className={styles.heading}>
-        <h1>{t(`admin.${section}`)}</h1>
-        <small>{t('admin.pageNote')}</small>
-      </div>
-      {message && <Notice tone="success">{message}</Notice>}
-      {error && <Notice tone="error">{error}</Notice>}
-      <div className={section === 'reports' ? styles.reportLayout : undefined}>
-        <section className={styles.card} aria-busy={busy}>
-          <header className={styles.cardHeader}>
-            <h2>{t(`admin.${section}`)}</h2>
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => setVersion((value) => value + 1)}
-            >
-              {t('admin.refresh')}
-            </Button>
-          </header>
-          {busy ? (
-            <div className={styles.body} role="status">
-              {t('admin.loading')}
-            </div>
-          ) : error ? (
-            <div className={styles.body}>{empty}</div>
-          ) : count === 0 ? (
-            empty
-          ) : (
-            <>
-              {section === 'users' && (
-                <UsersTable users={users} account={account} onEdit={setEditing} />
-              )}
-              {section === 'audit' && (
-                <>
-                  <div className={styles.body}>
-                    <span className={styles.muted}>{t('admin.readOnly')}</span>
-                  </div>
-                  <AuditTable events={events} />
-                </>
-              )}
-              {section === 'reports' && (
-                <ReportsView
-                  reports={reports}
-                  selected={selected}
-                  onSelect={setSelected}
-                  onProcess={openReport}
-                />
-              )}
-            </>
-          )}
-          {!busy && !error && footer}
-        </section>
-        {section === 'reports' && (
-          <aside className={styles.card}>
-            <header className={styles.cardHeader}>
-              <h2>{t('admin.preview')}</h2>
-            </header>
-            {selected ? (
-              <>
-                <div className={styles.preview}>
-                  <TextureImage
-                    key={`${selected.texture}-${version}`}
-                    id={selected.texture}
-                    name={t('admin.preview')}
-                    size={256}
-                  />
-                </div>
-                <div className={styles.body}>
-                  <p className={styles.mono}>{selected.texture}</p>
-                  <TextureModeration
-                    key={selected.texture}
-                    textureId={selected.texture}
-                    onChanged={saved}
-                  />
-                </div>
-              </>
-            ) : (
-              <EmptyState title={t('admin.previewHelp')} />
-            )}
-          </aside>
-        )}
-      </div>
-      {editing && (
-        <AdminEditor
-          key={editing.id}
-          target={editing}
-          account={account}
-          onClose={() => setEditing(null)}
-          onSaved={saved}
-        />
-      )}
-      <Dialog
-        open={processing !== null}
-        title={t('admin.handleReport')}
-        onClose={() => {
-          if (!saving) setProcessing(null)
-        }}
-      >
-        <form onSubmit={processReport}>
-          <p className={styles.summary}>{processing?.reason}</p>
-          {saveError && <Notice tone="error">{saveError}</Notice>}
-          <Field label={t('admin.actions')}>
-            <select
-              value={resolution}
-              disabled={saving}
-              onChange={(event) => setResolution(Number(event.target.value) as 1 | 2)}
-            >
-              <option value={1}>{t('admin.hideAndResolve')}</option>
-              <option value={2}>{t('admin.reject')}</option>
-            </select>
-          </Field>
-          {resolution === 1 && <Notice>{t('admin.reportWarning')}</Notice>}
-          <Field label={t('admin.note')} help={t('admin.noteHelp')}>
-            <textarea
-              rows={3}
-              maxLength={1000}
-              value={note}
-              disabled={saving}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </Field>
-          <div className={styles.formActions}>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={saving}
-              onClick={() => setProcessing(null)}
-            >
-              {t('admin.cancel')}
-            </Button>
-            <Button
-              type="submit"
-              variant={resolution === 1 ? 'danger' : 'primary'}
-              disabled={saving}
-            >
-              {t(saving ? 'admin.saving' : 'admin.confirm')}
-            </Button>
+    <div className="stack">
+      {!auth.isOwner ? <Notice tone="warn">{t('admin.users.ownerOnly')}</Notice> : null}
+      {list.loading ? (
+        <EmptyState title={t('common.loading')} />
+      ) : list.error ? (
+        <ErrorState message={list.error} onRetry={list.reload} />
+      ) : items.length === 0 ? (
+        <EmptyState title={t('admin.empty')} />
+      ) : (
+        <>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t('admin.users.email')}</th>
+                  <th>{t('admin.users.state')}</th>
+                  <th>{t('admin.users.permission')}</th>
+                  <th>{t('admin.users.created')}</th>
+                  <th>{t('admin.users.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((user) => {
+                  const isSelf = user.id === auth.account?.id
+                  const manageable =
+                    !isSelf &&
+                    user.state !== ACCOUNT_STATE.DELETED &&
+                    user.permission < PERMISSION.OWNER &&
+                    (auth.isOwner || user.permission === PERMISSION.USER)
+                  const banned = user.state === ACCOUNT_STATE.BANNED
+                  return (
+                    <tr key={user.id}>
+                      <td>
+                        <div>{user.email}</div>
+                        <div className="mono dim">{shortId(user.id, 12)}</div>
+                      </td>
+                      <td>
+                        <Badge tone={accountStateTone(user.state)}>
+                          {accountStateLabel(user.state)}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Badge tone={permissionTone(user.permission)}>
+                          {permissionLabel(user.permission)}
+                        </Badge>
+                      </td>
+                      <td className="small">{formatDate(user.createdAt)}</td>
+                      <td className="table__actions">
+                        {isSelf ? (
+                          <span className="small dim">{t('admin.users.self')}</span>
+                        ) : manageable ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={banned ? 'primary' : 'danger'}
+                              disabled={pending === user.id}
+                              onClick={() =>
+                                void patch(user, {
+                                  state: banned ? 0 : 1,
+                                  permission: user.permission === PERMISSION.ADMIN ? 1 : 0,
+                                })
+                              }
+                            >
+                              {banned ? t('admin.users.unban') : t('admin.users.ban')}
+                            </Button>
+                            {auth.isOwner && user.state !== ACCOUNT_STATE.BANNED ? (
+                              <Button
+                                size="sm"
+                                disabled={pending === user.id}
+                                onClick={() =>
+                                  void patch(user, {
+                                    state: 0,
+                                    permission: user.permission === PERMISSION.ADMIN ? 0 : 1,
+                                  })
+                                }
+                              >
+                                {user.permission === PERMISSION.ADMIN
+                                  ? t('admin.users.revoke')
+                                  : t('admin.users.grant')}
+                              </Button>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="small dim">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-        </form>
-      </Dialog>
+          <AdminPager offset={offset} count={items.length} onChange={setOffset} />
+        </>
+      )}
+    </div>
+  )
+}
+
+function ReportsPanel() {
+  const [offset, setOffset] = useState(0)
+  const [decision, setDecision] = useState<{ report: Report; resolution: 1 | 2 } | null>(null)
+  const list = useAsync((signal) => fetchReports(offset, signal), [offset])
+  const { notify } = useToast()
+  const items = list.data ?? []
+
+  function done(): void {
+    setDecision(null)
+    notify('ok', t('admin.reports.handled'))
+    list.reload()
+  }
+
+  return (
+    <div className="stack">
+      {list.loading ? (
+        <EmptyState title={t('common.loading')} />
+      ) : list.error ? (
+        <ErrorState message={list.error} onRetry={list.reload} />
+      ) : items.length === 0 ? (
+        <EmptyState title={t('admin.empty')} />
+      ) : (
+        <>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t('admin.reports.texture')}</th>
+                  <th>{t('admin.reports.reason')}</th>
+                  <th>{t('admin.reports.state')}</th>
+                  <th>{t('admin.reports.reporter')}</th>
+                  <th>{t('admin.reports.created')}</th>
+                  <th>{t('admin.users.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((report) => (
+                  <tr key={report.id}>
+                    <td>
+                      <a href={href(`/texture/${report.texture}`)} className="mono">
+                        {shortId(report.texture, 12)}
+                      </a>
+                    </td>
+                    <td style={{ minWidth: 200 }} title={report.reason}>
+                      {report.reason.length > 80 ? `${report.reason.slice(0, 80)}…` : report.reason}
+                      {report.note ? <div className="small dim">{report.note}</div> : null}
+                    </td>
+                    <td>
+                      <Badge tone={reportStateTone(report.state)}>
+                        {reportStateLabel(report.state)}
+                      </Badge>
+                    </td>
+                    <td className="mono dim">{shortId(report.reporter, 8)}</td>
+                    <td className="small">{formatDateTime(report.createdAt)}</td>
+                    <td className="table__actions">
+                      {report.state === 0 ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setDecision({ report, resolution: REPORT_RESOLUTION.HIDE })}
+                          >
+                            {t('admin.reports.resolve')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setDecision({ report, resolution: REPORT_RESOLUTION.REJECT })}
+                          >
+                            {t('admin.reports.reject')}
+                          </Button>
+                        </>
+                      ) : (
+                        <span className="small dim">{formatDate(report.handledAt)}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <AdminPager offset={offset} count={items.length} onChange={setOffset} />
+        </>
+      )}
+
+      {decision ? (
+        <ReportDecisionDialog
+          report={decision.report}
+          resolution={decision.resolution}
+          onClose={() => setDecision(null)}
+          onDone={done}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function ReportDecisionDialog({
+  report,
+  resolution,
+  onClose,
+  onDone,
+}: {
+  report: Report
+  resolution: 1 | 2
+  onClose: () => void
+  onDone: () => void
+}) {
+  const [note, setNote] = useState('')
+  const submit = useSubmit()
+  const hide = resolution === REPORT_RESOLUTION.HIDE
+
+  return (
+    <Dialog
+      open
+      title={hide ? t('admin.reports.resolveTitle') : t('admin.reports.rejectTitle')}
+      onClose={onClose}
+      footer={
+        <>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button
+            variant={hide ? 'danger' : 'primary'}
+            disabled={submit.busy}
+            onClick={() =>
+              void submit.run(async () => {
+                await resolveReport(
+                  report.id,
+                  hide
+                    ? { resolution: REPORT_RESOLUTION.HIDE, state: TEXTURE_STATE.HIDDEN, note }
+                    : { resolution: REPORT_RESOLUTION.REJECT, note },
+                )
+                onDone()
+              })
+            }
+          >
+            {submit.busy
+              ? t('common.submitting')
+              : hide
+                ? t('admin.reports.resolve')
+                : t('admin.reports.reject')}
+          </Button>
+        </>
+      }
+    >
+      <p className="muted">
+        {t('admin.reports.texture')}：<span className="mono">{report.texture}</span>
+      </p>
+      <p>{report.reason}</p>
+      <Field label={t('admin.reports.note')} htmlFor="report-decision-note" hint={t('admin.reports.noteHint')}>
+        <textarea
+          id="report-decision-note"
+          className="textarea"
+          maxLength={1000}
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </Field>
+      {submit.error ? <span className="field__error">{submit.error}</span> : null}
+    </Dialog>
+  )
+}
+
+function AuditPanel() {
+  const [offset, setOffset] = useState(0)
+  const list = useAsync((signal) => fetchAudit(offset, signal), [offset])
+  const items = list.data ?? []
+
+  if (list.loading) return <EmptyState title={t('common.loading')} />
+  if (list.error) return <ErrorState message={list.error} onRetry={list.reload} />
+  if (items.length === 0) return <EmptyState title={t('admin.empty')} />
+
+  return (
+    <div className="stack">
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>{t('admin.audit.created')}</th>
+              <th>{t('admin.audit.action')}</th>
+              <th>{t('admin.audit.result')}</th>
+              <th>{t('admin.audit.actor')}</th>
+              <th>{t('admin.audit.target')}</th>
+              <th>{t('admin.audit.state')}</th>
+              <th>{t('admin.audit.requestId')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((event) => (
+              <tr key={event.id}>
+                <td className="small">{formatDateTime(event.createdAt)}</td>
+                <td>{auditActionLabel(event.action)}</td>
+                <td>
+                  <Badge tone={auditResultTone(event.result)}>{auditResultLabel(event.result)}</Badge>
+                </td>
+                <td className="mono dim">{event.actor ? shortId(event.actor, 8) : '—'}</td>
+                <td className="mono dim">{event.target ? shortId(event.target, 8) : '—'}</td>
+                <td className="small">
+                  {event.targetState} / {event.targetPermission}
+                </td>
+                <td className="mono dim">{event.requestId || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <AdminPager offset={offset} count={items.length} onChange={setOffset} />
     </div>
   )
 }

@@ -1,205 +1,184 @@
-import { apiMessages, apiRetryMessage } from '../i18n/api'
-import { isAccount } from './validate'
-export type ErrorKind = keyof typeof apiMessages
-export class ApiError extends Error {
-  constructor(
-    public readonly kind: ErrorKind,
-    public readonly status = 0,
-    public readonly retryAfter: number | null = null,
-  ) {
-    super(apiMessages[kind])
-    this.name = 'ApiError'
-  }
+import { t } from '../i18n/zh-CN'
+import { listMeta, PAGE_SIZE, queryString } from '../lib/paging'
+import type { ListResult } from './types'
+
+const TOKEN_KEY = 'ygg.session.token'
+const STATUS_MESSAGES: Record<number, string> = {
+  400: t('error.400'),
+  401: t('error.401'),
+  403: t('error.403'),
+  404: t('error.404'),
+  409: t('error.409'),
+  413: t('error.413'),
+  415: t('error.415'),
+  429: t('error.429'),
+  503: t('error.503'),
 }
-export function errorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return apiMessages.server
-  if (error.kind === 'rateLimit' && error.retryAfter !== null && error.retryAfter > 0)
-    return apiRetryMessage.replace('{seconds}', String(error.retryAfter))
-  return error.message
-}
-let accessToken: string | null = null
-const listeners = new Set<() => void>()
-export function setAccessToken(value: string) {
-  accessToken = value
-}
-export function clearAccessToken() {
-  accessToken = null
-}
-export function subscribeAuthExpired(listener: () => void) {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-  }
-}
-interface Options {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  body?: unknown
-  signal?: AbortSignal
-  timeoutMs?: number
-  authenticated?: boolean
-}
-function kind(status: number): ErrorKind {
-  return status === 401
-    ? 'unauthorized'
-    : status === 403
-      ? 'forbidden'
-      : status === 404
-        ? 'missing'
-        : status === 409
-          ? 'conflict'
-          : status === 413
-            ? 'quota'
-            : status === 429
-              ? 'rateLimit'
-              : status >= 500
-                ? 'server'
-                : 'validation'
-}
-async function request<T>(
-  path: string,
-  decode: (response: Response) => Promise<T>,
-  options: Options = {},
-): Promise<T> {
-  const controller = new AbortController()
-  let timedOut = false
-  const abort = () => controller.abort()
-  if (options.signal?.aborted) controller.abort()
-  else options.signal?.addEventListener('abort', abort, { once: true })
-  const timeout = setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, options.timeoutMs ?? 20000)
-  const headers = new Headers({ Accept: 'application/json' })
-  const token = options.authenticated === false ? null : accessToken
-  if (token) headers.set('Authorization', `Bearer ${token}`)
-  const multipart = options.body instanceof FormData
-  if (options.body !== undefined && !multipart) headers.set('Content-Type', 'application/json')
+
+let memoryToken: string | null = null
+let sessionLostHandler: (() => void) | null = null
+
+/** 令牌只存 sessionStorage，隐私模式下降级为内存态（关标签页即失效）。 */
+export function getToken(): string | null {
+  if (memoryToken) return memoryToken
   try {
-    const response = await fetch(path, {
-      method: options.method ?? 'GET',
-      headers,
-      signal: controller.signal,
-      credentials: 'omit',
-      cache: 'no-store',
-      body:
-        options.body === undefined
-          ? undefined
-          : multipart
-            ? (options.body as FormData)
-            : JSON.stringify(options.body),
-    })
-    if (!response.ok) {
-      if (
-        response.status === 401 ||
-        (response.status === 403 &&
-          path === '/api/account' &&
-          (options.method ?? 'GET') === 'GET' &&
-          token)
-      ) {
-        if (accessToken === token) {
-          clearAccessToken()
-          listeners.forEach((l) => l())
-        }
-        throw new ApiError('unauthorized', response.status)
-      }
-      if (response.status === 403 && token && accessToken === token) {
-        try {
-          await requestJSON('/api/account', isAccount, { signal: controller.signal })
-        } catch (e) {
-          if (e instanceof ApiError && e.kind === 'unauthorized') throw e
-          if (controller.signal.aborted) throw new ApiError(timedOut ? 'timeout' : 'aborted')
-        }
-      }
-      const raw = response.headers.get('Retry-After')
-      const retry =
-        raw === null
-          ? null
-          : /^\d+$/.test(raw)
-            ? Number(raw)
-            : Math.max(0, Math.ceil((Date.parse(raw) - Date.now()) / 1000))
-      throw new ApiError(
-        kind(response.status),
-        response.status,
-        retry !== null && Number.isFinite(retry) ? retry : null,
-      )
-    }
-    return await decode(response)
-  } catch (e) {
-    if (e instanceof ApiError) throw e
-    if (controller.signal.aborted) throw new ApiError(timedOut ? 'timeout' : 'aborted')
-    throw new ApiError('network')
-  } finally {
-    clearTimeout(timeout)
-    options.signal?.removeEventListener('abort', abort)
+    return sessionStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
   }
 }
-export function requestJSON<T>(
+
+export function setToken(token: string | null): void {
+  memoryToken = token
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token)
+    else sessionStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // sessionStorage 不可用时保持内存态，不影响本次会话。
+  }
+}
+
+export function setSessionLostHandler(handler: (() => void) | null): void {
+  sessionLostHandler = handler
+}
+
+export class ApiError extends Error {
+  readonly status: number
+  readonly retryAfter: number
+
+  constructor(status: number, message: string, retryAfter = 0) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.retryAfter = retryAfter
+  }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError
+}
+
+export function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+/** 页面只展示这里的文案；后端 errorMessage 原样不进 DOM。 */
+export function errorMessage(error: unknown): string {
+  if (isApiError(error)) return error.message
+  if (isAbortError(error)) return ''
+  return t('error.500')
+}
+
+type RequestOptions = {
+  method?: string
+  json?: unknown
+  form?: FormData
+  signal?: AbortSignal
+}
+
+function dropSession(): void {
+  if (!getToken()) return
+  setToken(null)
+  sessionLostHandler?.()
+}
+
+// 403 同时用于"无权限"和"令牌失效"，所以要回查账号才能区分（AGENTS.md §3.2）。
+async function accountStillValid(): Promise<boolean> {
+  const token = getToken()
+  if (!token) return false
+  try {
+    const response = await fetch('/api/account', {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      credentials: 'omit',
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+async function fail(response: Response, path: string): Promise<never> {
+  const status = response.status
+  const retryAfter = Number(response.headers.get('Retry-After') ?? 0) || 0
+  if (status === 401) {
+    dropSession()
+    throw new ApiError(status, t('error.sessionExpired'), retryAfter)
+  }
+  if (status === 403 && getToken() && !(await accountStillValid())) {
+    dropSession()
+    throw new ApiError(status, t('error.sessionExpired'), retryAfter)
+  }
+  const fallback = status >= 500 ? t('error.500') : t('error.400')
+  let message =
+    status === 429 && retryAfter > 0
+      ? t('error.rateLimited', { seconds: retryAfter })
+      : (STATUS_MESSAGES[status] ?? fallback)
+  // 403 在这些端点表示"凭证不正确"，与权限不足区分开。
+  if (status === 403) {
+    if (path === '/api/auth/login') message = t('auth.invalidCredentials')
+    else if (path.startsWith('/api/account')) message = t('account.wrongPassword')
+  }
+  throw new ApiError(status, message, retryAfter)
+}
+
+async function raw(path: string, options: RequestOptions = {}): Promise<Response> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  let body: BodyInit | undefined
+  if (options.form) {
+    body = options.form
+  } else if (options.json !== undefined) {
+    headers['Content-Type'] = 'application/json'
+    body = JSON.stringify(options.json)
+  }
+  let response: Response
+  try {
+    response = await fetch(path, {
+      method: options.method ?? (body === undefined ? 'GET' : 'POST'),
+      headers,
+      body,
+      signal: options.signal,
+      credentials: 'omit',
+    })
+  } catch (error) {
+    if (isAbortError(error)) throw error
+    throw new ApiError(0, t('error.network'))
+  }
+  if (!response.ok) await fail(response, path)
+  return response
+}
+
+export async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await raw(path, options)
+  return (await response.json()) as T
+}
+
+/** 用于 204 无内容或后端可能返回 204 的端点。 */
+export async function requestOptionalJson<T>(path: string, options: RequestOptions = {}): Promise<T | null> {
+  const response = await raw(path, options)
+  if (response.status === 204) return null
+  return (await response.json()) as T
+}
+
+export async function requestVoid(path: string, options: RequestOptions = {}): Promise<void> {
+  await raw(path, options)
+}
+
+export async function requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const response = await raw(path, options)
+  return await response.blob()
+}
+
+/** 列表端点的数组 + 响应头分页。 */
+export async function listWithMeta<T>(
   path: string,
-  validate: (v: unknown) => v is T,
-  options?: Options,
-): Promise<T> {
-  return request(
-    path,
-    async (response) => {
-      let v: unknown
-      try {
-        v = await response.json()
-      } catch {
-        throw new ApiError('response')
-      }
-      if (!validate(v)) throw new ApiError('response')
-      return v
-    },
-    options,
-  )
-}
-export function requestEmpty(path: string, options?: Options): Promise<void> {
-  return request(path, async () => undefined, options)
-}
-export function requestBlob(path: string, options?: Options): Promise<Blob> {
-  return request(
-    path,
-    async (response) => {
-      if (!response.headers.get('Content-Type')?.startsWith('image/png'))
-        throw new ApiError('response')
-      return response.blob()
-    },
-    options,
-  )
-}
-export function requestPage<T>(
-  path: string,
-  validate: (v: unknown) => v is T[],
-  options?: Options,
-): Promise<import('./types').Page<T>> {
-  return request(
-    path,
-    async (response) => {
-      let items: unknown
-      try {
-        items = await response.json()
-      } catch {
-        throw new ApiError('response')
-      }
-      const total = Number(response.headers.get('X-Total-Count'))
-      const limit = Number(response.headers.get('X-Limit'))
-      if (
-        !validate(items) ||
-        !response.headers.has('X-Total-Count') ||
-        !Number.isInteger(total) ||
-        total < 0 ||
-        !Number.isInteger(limit) ||
-        limit < 1 ||
-        limit > 100
-      )
-        throw new ApiError('response')
-      return {
-        items,
-        total,
-        limit,
-        next: response.headers.get('Link')?.match(/<([^>]+)>;\s*rel="next"/)?.[1] ?? null,
-      }
-    },
-    options,
-  )
+  params: Record<string, string | number | undefined | null>,
+  signal?: AbortSignal,
+): Promise<ListResult<T>> {
+  const offset = Number(params.offset ?? 0) || 0
+  const limit = Number(params.limit ?? PAGE_SIZE) || PAGE_SIZE
+  const response = await raw(`${path}${queryString(params)}`, { signal })
+  const items = (await response.json()) as T[]
+  return { items, meta: listMeta(response.headers, items.length, offset, limit) }
 }

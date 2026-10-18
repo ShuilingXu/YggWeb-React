@@ -1,30 +1,30 @@
-import type {
-  AccountState,
-  Permission,
-  TextureType,
-  TextureState,
-  Visibility,
-  ReportState,
-} from './enums'
-export interface Account {
+// 后端 JSON 契约（字段名与 YggServer-Go internal/*/*.go 的 json tag 一致）。
+export type TextureType = 0 | 1 | 2
+export type TextureState = 0 | 1
+export type AccountState = 0 | 1 | 2
+export type Permission = 0 | 1 | 2
+export type ReportState = 0 | 1 | 2
+export type ReportResolution = 1 | 2
+export type AuditAction = 0 | 1 | 2 | 3
+export type AuditResult = -1 | 0 | 1
+export type PublicFlag = 0 | 1
+
+export type Profile = {
+  /** 32 位无横线 UUID */
+  id: string
+  name: string
+}
+
+export type Account = {
   id: string
   email: string
   state: AccountState
   permission: Permission
-  verified: 0 | 1
+  verified: PublicFlag
   createdAt: string
 }
-export interface Player {
-  id: string
-  name: string
-}
-export interface LoginResponse {
-  accessToken: string
-  clientToken: string
-  availableProfiles: Player[]
-  selectedProfile?: Player
-}
-export interface Texture {
+
+export type Texture = {
   id: string
   name: string
   type: TextureType
@@ -32,34 +32,13 @@ export interface Texture {
   sizeBytes: number
   width: number
   height: number
-  public: Visibility
-  state: TextureState
+  public: PublicFlag
   createdAt: string
+  state: TextureState
   itemName?: string
 }
-export interface TextureQuery {
-  q?: string
-  type?: TextureType
-  uploader?: string
-  sort?: 'newest' | 'oldest' | 'name'
-  offset?: number
-  limit?: number
-}
-export interface Page<T> {
-  items: T[]
-  total: number
-  limit: number
-  next: string | null
-}
-export interface TextureInput {
-  name: string
-  type: TextureType
-  public: Visibility
-}
-export interface TextureUpload extends TextureInput {
-  file: File
-}
-export interface Report {
+
+export type Report = {
   id: string
   texture: string
   reporter: string
@@ -70,14 +49,46 @@ export interface Report {
   handler: string
   note: string
 }
-export interface AuditEvent {
+
+export type AuditEvent = {
   id: number
   actor: string
   target: string
-  action: 0 | 1 | 2 | 3
+  action: AuditAction
   requestId: string
-  result: 0 | 1
-  targetState: -1 | AccountState
-  targetPermission: -1 | Permission
+  result: AuditResult
+  targetState: number
+  targetPermission: number
   createdAt: string
+}
+
+export type LoginResponse = {
+  accessToken: string
+  clientToken: string
+  availableProfiles: Profile[]
+  selectedProfile?: Profile
+}
+
+export type Property = {
+  name: string
+  value: string
+  signature?: string
+}
+
+export type SessionProfile = Profile & { properties: Property[] }
+
+export type Appearance = {
+  skin: { url: string; model: 'default' | 'slim' } | null
+  cape: { url: string } | null
+}
+
+export type ListMeta = {
+  total: number
+  limit: number
+  next: number | null
+}
+
+export type ListResult<T> = {
+  items: T[]
+  meta: ListMeta
 }
