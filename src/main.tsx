@@ -2,11 +2,5 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import './styles/tokens.css'
-import './styles/layout.css'
-const root = document.getElementById('root')
-if (!root) throw new Error('missing react root')
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+import './styles/components.css'
+createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>)

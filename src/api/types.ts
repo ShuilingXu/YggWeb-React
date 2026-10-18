@@ -1,83 +1,43 @@
-import type {
-  AccountState,
-  Permission,
-  TextureType,
-  TextureState,
-  Visibility,
-  ReportState,
-} from './enums'
-export interface Account {
-  id: string
+export type Account = { id: string
   email: string
-  state: AccountState
-  permission: Permission
+  state: 0 | 1 | 2
+  permission: 0 | 1 | 2
   verified: 0 | 1
-  createdAt: string
-}
-export interface Player {
-  id: string
+  createdAt: string }
+export type Player = { id: string
+  name: string }
+export type Texture = { id: string
   name: string
-}
-export interface LoginResponse {
-  accessToken: string
-  clientToken: string
-  availableProfiles: Player[]
-  selectedProfile?: Player
-}
-export interface Texture {
-  id: string
-  name: string
-  type: TextureType
+  type: 0 | 1 | 2
   hash: string
   sizeBytes: number
   width: number
   height: number
-  public: Visibility
-  state: TextureState
+  public: 0 | 1
+  state: 0 | 1
   createdAt: string
-  itemName?: string
-}
-export interface TextureQuery {
-  q?: string
-  type?: TextureType
-  uploader?: string
-  sort?: 'newest' | 'oldest' | 'name'
-  offset?: number
-  limit?: number
-}
-export interface Page<T> {
-  items: T[]
-  total: number
-  limit: number
-  next: string | null
-}
-export interface TextureInput {
-  name: string
-  type: TextureType
-  public: Visibility
-}
-export interface TextureUpload extends TextureInput {
-  file: File
-}
-export interface Report {
-  id: string
+  itemName?: string }
+export type Report = { id: string
   texture: string
   reporter: string
   reason: string
-  state: ReportState
+  state: 0 | 1 | 2
   createdAt: string
   handledAt: string | null
   handler: string
-  note: string
-}
-export interface AuditEvent {
-  id: number
+  note: string }
+export type Audit = { id: number
   actor: string
   target: string
   action: 0 | 1 | 2 | 3
-  requestId: string
   result: 0 | 1
-  targetState: -1 | AccountState
-  targetPermission: -1 | Permission
-  createdAt: string
-}
+  targetState: number
+  targetPermission: number
+  requestId: string
+  createdAt: string }
+export type Page<T> = { items: T[]
+  total: number | null
+  limit: number
+  next: boolean }
+export type Profile = Player & { properties: { name: string
+  value: string }[] }

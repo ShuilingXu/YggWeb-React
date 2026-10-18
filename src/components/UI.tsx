@@ -1,167 +1,65 @@
-import {
-  cloneElement,
-  isValidElement,
-  useEffect,
-  useId,
-  useRef,
-  type HTMLAttributes,
-  type ReactElement,
-  type ButtonHTMLAttributes,
-  type ReactNode,
-} from 'react'
+import { createContext, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { t } from '../i18n/zh-CN'
-import styles from './UI.module.css'
-export function Button({
-  variant = 'primary',
-  className = '',
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' }) {
-  return <button className={`${styles.button} ${styles[variant]} ${className}`} {...props} />
+import { Icon } from './Icons'
+
+export function Button({ children, variant = 'default', busy = false, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'default' | 'primary' | 'danger' | 'ghost'
+  busy?: boolean }) {
+  return <button {...props} disabled={busy || props.disabled} className={`button button-${variant} ${props.className || ''}`} aria-busy={busy}>{busy && <span className="spinner" />}{children}</button>
 }
-export function Field({
-  label,
-  children,
-  help,
-  error,
-}: {
-  label: string
-  children: ReactNode
-  help?: string
+export function Field({ label, error, hint, children }: { label: string
   error?: string
-}) {
+  hint?: string
+  children: ReactNode }) {
   const id = useId()
-  const helpId = id + '-help',
-    errorId = id + '-error'
-  const describedBy = [help && helpId, error && errorId].filter(Boolean).join(' ') || undefined
-  const control =
-    isValidElement(children) && typeof children.type === 'string'
-      ? cloneElement(children as ReactElement<HTMLAttributes<HTMLElement>>, {
-          'aria-describedby': describedBy,
-          'aria-invalid': error ? true : undefined,
-        })
-      : children
-  return (
-    <div className={styles.field}>
-      <label>
-        {label}
-        <span className={styles.control}>{control}</span>
-      </label>
-      {help && <small id={helpId}>{help}</small>}
-      {error && (
-        <span id={errorId} className={styles.error} role="alert">
-          {error}
-        </span>
-      )}
-    </div>
-  )
+  return <label className="field"><span className="field-label">{label}</span>{children}{hint && <small>{hint}</small>}{error && <small id={id} role="alert" className="field-error">{error}</small>}</label>
 }
-export function Notice({
-  children,
-  tone = 'info',
-}: {
+export function Badge({ children, tone = '' }: { children: ReactNode
+  tone?: string }) { return <span className={`badge ${tone}`}>{children}</span> }
+export function EmptyState({ title = t('empty'), text = t('emptyText'), children }: { title?: string
+  text?: string
+  children?: ReactNode }) {
+  return <div className="empty-state"><span className="empty-icon"><Icon name="box" size={32} /></span><h2>{title}</h2><p>{text}</p>{children}</div>
+}
+export function ErrorState({ message, retry }: { message: string
+  retry?: () => void }) { return <div role="alert" className="error-state"><Icon name="warning" /><div><strong>{t('loadError')}</strong><p>{message}</p>{retry && <Button onClick={retry}>{t('retry')}</Button>}</div></div> }
+export function Skeleton() { return <div className="skeleton-grid" role="status" aria-label={t('loading')}>{Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton" />)}</div> }
+export function Pagination({ offset, limit = 24, total, next, onChange }: { offset: number
+  limit?: number
+  total: number | null
+  next: boolean
+  onChange: (offset: number) => void }) {
+  if (!offset && !next && (total === null || total <= limit)) return null
+  return <nav className="pagination" aria-label={t('page', { page: Math.floor(offset / limit) + 1 })}><Button disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - limit))}>{t('previous')}</Button><span>{t('page', { page: Math.floor(offset / limit) + 1 })}</span><Button disabled={!next && (total === null || offset + limit >= total)} onClick={() => onChange(offset + limit)}>{t('next')}</Button></nav>
+}
+export function Tabs({ value, items, onChange }: { value: string
+  items: { value: string
+  label: string }[]
+  onChange: (value: string) => void }) {
+  return <div className="tabs" role="group">{items.map(item => <button key={item.value} aria-pressed={value === item.value} className={value === item.value ? 'active' : ''} onClick={() => onChange(item.value)}>{item.label}</button>)}</div>
+}
+export function Dialog({ title, children, onClose }: { title: string
   children: ReactNode
-  tone?: 'error' | 'success' | 'info'
-}) {
-  return (
-    <div
-      role={tone === 'error' ? 'alert' : 'status'}
-      className={`${styles.notice} ${styles[tone]}`}
-    >
-      {children}
-    </div>
-  )
-}
-export function EmptyState({
-  title,
-  description,
-  action,
-}: {
-  title: string
-  description?: string
-  action?: ReactNode
-}) {
-  return (
-    <div className={styles.empty}>
-      <p>{title}</p>
-      {description && <small>{description}</small>}
-      {action}
-    </div>
-  )
-}
-export function Dialog({
-  open,
-  title,
-  onClose,
-  children,
-}: {
-  open: boolean
-  title: string
-  onClose: () => void
-  children: ReactNode
-}) {
+  onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   const id = useId()
   useEffect(() => {
-    const d = ref.current
-    if (!d) return
-    const previous = document.activeElement
-    if (open && !d.open) d.showModal()
-    else if (!open && d.open) d.close()
-    return () => {
-      if (d.open) d.close()
-      if (previous instanceof HTMLElement) previous.focus()
-    }
-  }, [open])
-  return (
-    <dialog
-      ref={ref}
-      className={styles.dialog}
-      aria-labelledby={id}
-      onCancel={(e) => {
-        e.preventDefault()
-        onClose()
-      }}
-    >
-      <header>
-        <h2 id={id}>{title}</h2>
-        <button type="button" aria-label={t('common.close')} onClick={onClose}>
-          ×
-        </button>
-      </header>
-      <div className={styles.dialogBody}>{children}</div>
-    </dialog>
-  )
+    const previous = document.activeElement as HTMLElement | null
+    const dialog = ref.current!
+    dialog.showModal()
+    return () => { dialog.close()
+      previous?.focus() }
+  }, [])
+  return <dialog ref={ref} aria-labelledby={id} onCancel={event => { event.preventDefault()
+    onClose() }} onClick={event => { if (event.target === ref.current) onClose() }}><div className="dialog-head"><h2 id={id}>{title}</h2><Button variant="ghost" onClick={onClose} aria-label={t('close')}><Icon name="close" /></Button></div>{children}</dialog>
 }
-export function Pagination({
-  offset,
-  total,
-  limit,
-  onChange,
-}: {
-  offset: number
-  total: number
-  limit: number
-  onChange: (offset: number) => void
-}) {
-  return (
-    <nav className={styles.pagination} aria-label={t('common.pagination')}>
-      <Button
-        variant="secondary"
-        disabled={!offset}
-        onClick={() => onChange(Math.max(0, offset - limit))}
-      >
-        {t('common.previous')}
-      </Button>
-      <span aria-current="page">
-        {t('common.page', { page: Math.floor(offset / limit) + 1, total })}
-      </span>
-      <Button
-        variant="secondary"
-        disabled={offset + limit >= total}
-        onClick={() => onChange(offset + limit)}
-      >
-        {t('common.next')}
-      </Button>
-    </nav>
-  )
+const ToastContext = createContext<(message: string) => void>(() => {})
+export const useToast = () => useContext(ToastContext)
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [message, setMessage] = useState('')
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  const show = (text: string) => { setMessage(text)
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setMessage(''), 6000) }
+  return <ToastContext value={show}>{children}<div className="toast-region" aria-live="polite" aria-atomic="true">{message && <div className="toast"><Icon name="check" /><span>{message}</span><button onClick={() => setMessage('')} aria-label={t('close')}><Icon name="close" size={16} /></button></div>}</div></ToastContext>
 }

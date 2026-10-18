@@ -2,21 +2,11 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#17a2b8" />
-    <link rel="icon" href="/web/favicon.svg" />
-    <title>Ygg Skin</title>
-    <script>
-      try {
-        document.documentElement.dataset.theme = localStorage.getItem('ygg-bs-theme') || 'light'
-      } catch {
-        document.documentElement.dataset.theme = 'light'
-      }
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#427338" />
+    <meta name="description" content="Ygg Skin，探索、收藏和穿戴属于你的 Minecraft 皮肤与披风。" />
+    <title>Ygg Skin · 你的下一段冒险</title>
+    <script>try{document.documentElement.dataset.theme=localStorage.getItem('ygg.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch{}</script>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
 </html>

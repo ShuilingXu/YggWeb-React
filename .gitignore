@@ -1,11 +1,12 @@
 node_modules/
 dist/
 coverage/
-*.log
-.env
-.env.*
 .vite/
+.env*
+*.log
 *.tsbuildinfo
-.idea/
-.DS_Store
 *.tmp
+/screenshots/
+/test-results/
+*.har
+.idea/

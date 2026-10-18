@@ -1,205 +1,62 @@
-import { apiMessages, apiRetryMessage } from '../i18n/api'
-import { isAccount } from './validate'
-export type ErrorKind = keyof typeof apiMessages
+import { t } from '../i18n/zh-CN'
+import { paging } from '../lib/paging'
+import type { Page } from './types'
+
+let memoryToken = ''
+try { memoryToken = sessionStorage.getItem('ygg.session.token') || '' } catch { /* 存储不可用时只使用内存会话。 */ }
+export const getToken = () => memoryToken
+export function setToken(value: string) {
+  memoryToken = value
+  try { value ? sessionStorage.setItem('ygg.session.token', value) : sessionStorage.removeItem('ygg.session.token') } catch { /* 隐私模式不阻止登录。 */ }
+}
 export class ApiError extends Error {
-  constructor(
-    public readonly kind: ErrorKind,
-    public readonly status = 0,
-    public readonly retryAfter: number | null = null,
-  ) {
-    super(apiMessages[kind])
-    this.name = 'ApiError'
-  }
+  constructor(public status: number, message: string) { super(message) }
 }
-export function errorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return apiMessages.server
-  if (error.kind === 'rateLimit' && error.retryAfter !== null && error.retryAfter > 0)
-    return apiRetryMessage.replace('{seconds}', String(error.retryAfter))
-  return error.message
+function statusMessage(response: Response) {
+  const status = response.status
+  if (status === 429) return t('error429', { seconds: Number(response.headers.get('Retry-After')) || 60 })
+  const key = ({ 400: 'error400', 401: 'error401', 403: 'error403', 404: 'error404', 409: 'error409', 413: 'error413', 415: 'error415', 503: 'error503' } as const)[status as 400]
+  return t(key || 'error500')
 }
-let accessToken: string | null = null
-const listeners = new Set<() => void>()
-export function setAccessToken(value: string) {
-  accessToken = value
-}
-export function clearAccessToken() {
-  accessToken = null
-}
-export function subscribeAuthExpired(listener: () => void) {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-  }
-}
-interface Options {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  body?: unknown
-  signal?: AbortSignal
-  timeoutMs?: number
-  authenticated?: boolean
-}
-function kind(status: number): ErrorKind {
-  return status === 401
-    ? 'unauthorized'
-    : status === 403
-      ? 'forbidden'
-      : status === 404
-        ? 'missing'
-        : status === 409
-          ? 'conflict'
-          : status === 413
-            ? 'quota'
-            : status === 429
-              ? 'rateLimit'
-              : status >= 500
-                ? 'server'
-                : 'validation'
-}
-async function request<T>(
-  path: string,
-  decode: (response: Response) => Promise<T>,
-  options: Options = {},
-): Promise<T> {
-  const controller = new AbortController()
-  let timedOut = false
-  const abort = () => controller.abort()
-  if (options.signal?.aborted) controller.abort()
-  else options.signal?.addEventListener('abort', abort, { once: true })
-  const timeout = setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, options.timeoutMs ?? 20000)
-  const headers = new Headers({ Accept: 'application/json' })
-  const token = options.authenticated === false ? null : accessToken
+async function response(path: string, init: RequestInit = {}) {
+  const token = getToken()
+  const headers = new Headers(init.headers)
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  const multipart = options.body instanceof FormData
-  if (options.body !== undefined && !multipart) headers.set('Content-Type', 'application/json')
-  try {
-    const response = await fetch(path, {
-      method: options.method ?? 'GET',
-      headers,
-      signal: controller.signal,
-      credentials: 'omit',
-      cache: 'no-store',
-      body:
-        options.body === undefined
-          ? undefined
-          : multipart
-            ? (options.body as FormData)
-            : JSON.stringify(options.body),
-    })
-    if (!response.ok) {
-      if (
-        response.status === 401 ||
-        (response.status === 403 &&
-          path === '/api/account' &&
-          (options.method ?? 'GET') === 'GET' &&
-          token)
-      ) {
-        if (accessToken === token) {
-          clearAccessToken()
-          listeners.forEach((l) => l())
-        }
-        throw new ApiError('unauthorized', response.status)
-      }
-      if (response.status === 403 && token && accessToken === token) {
-        try {
-          await requestJSON('/api/account', isAccount, { signal: controller.signal })
-        } catch (e) {
-          if (e instanceof ApiError && e.kind === 'unauthorized') throw e
-          if (controller.signal.aborted) throw new ApiError(timedOut ? 'timeout' : 'aborted')
-        }
-      }
-      const raw = response.headers.get('Retry-After')
-      const retry =
-        raw === null
-          ? null
-          : /^\d+$/.test(raw)
-            ? Number(raw)
-            : Math.max(0, Math.ceil((Date.parse(raw) - Date.now()) / 1000))
-      throw new ApiError(
-        kind(response.status),
-        response.status,
-        retry !== null && Number.isFinite(retry) ? retry : null,
-      )
-    }
-    return await decode(response)
-  } catch (e) {
-    if (e instanceof ApiError) throw e
-    if (controller.signal.aborted) throw new ApiError(timedOut ? 'timeout' : 'aborted')
-    throw new ApiError('network')
-  } finally {
-    clearTimeout(timeout)
-    options.signal?.removeEventListener('abort', abort)
+  let result: Response
+  try { result = await fetch(path, { ...init, headers, credentials: 'omit' }) }
+  catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    throw new ApiError(0, t('networkError'))
   }
-}
-export function requestJSON<T>(
-  path: string,
-  validate: (v: unknown) => v is T,
-  options?: Options,
-): Promise<T> {
-  return request(
-    path,
-    async (response) => {
-      let v: unknown
-      try {
-        v = await response.json()
-      } catch {
-        throw new ApiError('response')
+  if (!result.ok) {
+    let expired = result.status === 401
+    if (result.status === 403 && token) {
+      if (path === '/api/account') expired = true
+      else {
+        try {
+          const check = await fetch('/api/account', { headers: { Authorization: `Bearer ${token}` }, credentials: 'omit', signal: init.signal })
+          expired = check.status === 401 || check.status === 403
+        } catch { /* 网络异常不当作令牌失效。 */ }
       }
-      if (!validate(v)) throw new ApiError('response')
-      return v
-    },
-    options,
-  )
+    }
+    if (expired && token === getToken()) { setToken('')
+      window.dispatchEvent(new Event('ygg:expired')) }
+    throw new ApiError(result.status, expired ? t('reauthenticate') : statusMessage(result))
+  }
+  return result
 }
-export function requestEmpty(path: string, options?: Options): Promise<void> {
-  return request(path, async () => undefined, options)
+export async function request<T = void>(path: string, init: RequestInit = {}): Promise<T> {
+  const result = await response(path, init)
+  if (result.status === 204 || result.status === 201 || result.status === 202) {
+    if (!result.headers.get('Content-Type')?.includes('json')) return undefined as T
+  }
+  try { return await result.json() as T } catch { throw new ApiError(result.status, t('invalidResponse')) }
 }
-export function requestBlob(path: string, options?: Options): Promise<Blob> {
-  return request(
-    path,
-    async (response) => {
-      if (!response.headers.get('Content-Type')?.startsWith('image/png'))
-        throw new ApiError('response')
-      return response.blob()
-    },
-    options,
-  )
+export const send = <T = void>(path: string, method: string, body?: unknown, signal?: AbortSignal) => request<T>(path, { method, signal, ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) })
+export async function listWithMeta<T>(path: string, signal?: AbortSignal): Promise<Page<T>> {
+  const result = await response(path, { signal })
+  const items: unknown = await result.json()
+  if (!Array.isArray(items)) throw new ApiError(200, t('invalidResponse'))
+  return { items: items as T[], ...paging(result.headers, items.length, Number(new URL(path, location.origin).searchParams.get('limit')) || 50) }
 }
-export function requestPage<T>(
-  path: string,
-  validate: (v: unknown) => v is T[],
-  options?: Options,
-): Promise<import('./types').Page<T>> {
-  return request(
-    path,
-    async (response) => {
-      let items: unknown
-      try {
-        items = await response.json()
-      } catch {
-        throw new ApiError('response')
-      }
-      const total = Number(response.headers.get('X-Total-Count'))
-      const limit = Number(response.headers.get('X-Limit'))
-      if (
-        !validate(items) ||
-        !response.headers.has('X-Total-Count') ||
-        !Number.isInteger(total) ||
-        total < 0 ||
-        !Number.isInteger(limit) ||
-        limit < 1 ||
-        limit > 100
-      )
-        throw new ApiError('response')
-      return {
-        items,
-        total,
-        limit,
-        next: response.headers.get('Link')?.match(/<([^>]+)>;\s*rel="next"/)?.[1] ?? null,
-      }
-    },
-    options,
-  )
-}
+export async function imageBlob(path: string, signal?: AbortSignal) { return (await response(path, { signal })).blob() }
