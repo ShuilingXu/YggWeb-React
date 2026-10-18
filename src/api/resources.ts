@@ -1,7 +1,23 @@
 import { listWithMeta, request, send } from './client'
-import type { Account, Audit, Player, Profile, Report, Texture } from './types'
+import type { Account, Audit, ExternalIdentity, SiteSettings, Wallet, OAuthClient, Player, Profile, Report, Texture } from './types'
 
 export const api = {
+  startExternal: (link: boolean, signal?: AbortSignal) => send<{ url: string
+  state: string }>(link ? '/api/account/oidc/start' : '/api/auth/oidc/start', 'POST', undefined, signal),
+  completeExternal: (state: string, code: string, signal?: AbortSignal) => send<{ accessToken: string }>('/api/auth/oidc/complete', 'POST', { state, code }, signal),
+  externalIdentities: (signal?: AbortSignal) => request<ExternalIdentity[]>('/api/account/oidc', { signal }),
+  removeExternal: (id: string, password: string, signal?: AbortSignal) => send(`/api/account/oidc/${id}`, 'DELETE', { password }, signal),
+  grants: (signal?: AbortSignal) => request<OAuthClient[]>('/api/account/oauth', { signal }),
+  revokeGrant: (id: string, signal?: AbortSignal) => send(`/api/account/oauth/${id}`, 'DELETE', undefined, signal),
+  site: (signal?: AbortSignal) => request<SiteSettings>('/api/site', { signal }),
+  saveSite: (body: SiteSettings, signal?: AbortSignal) => send('/api/admin/site', 'PUT', body, signal),
+  wallet: (signal?: AbortSignal) => request<Wallet>('/api/account/points', { signal }),
+  sign: (signal?: AbortSignal) => send<Wallet>('/api/account/sign', 'POST', undefined, signal),
+  clients: (signal?: AbortSignal) => request<OAuthClient[]>('/api/admin/oauth/clients', { signal }),
+  createClient: (name: string, redirectUri: string, signal?: AbortSignal) => send<OAuthClient>('/api/admin/oauth/clients', 'POST', { name, redirectUri }, signal),
+  deleteClient: (id: string, signal?: AbortSignal) => send(`/api/admin/oauth/clients/${id}`, 'DELETE', undefined, signal),
+  oauthClient: (id: string, signal?: AbortSignal) => request<OAuthClient>(`/api/oauth/client?client_id=${encodeURIComponent(id)}`, { signal }),
+  consent: (body: Record<string, unknown>, signal?: AbortSignal) => send<{ redirect: string }>('/api/oauth/authorize', 'POST', body, signal),
   account: (signal?: AbortSignal) => request<Account>('/api/account', { signal }),
   players: (signal?: AbortSignal) => request<Player[]>('/api/players', { signal }),
   texture: (id: string, signal?: AbortSignal) => request<Texture>(`/api/textures/${encodeURIComponent(id)}`, { signal }),

@@ -9,14 +9,15 @@ import { TextureDetail } from './pages/TextureDetail'
 import { Upload } from './pages/Upload'
 import { Players } from './pages/Players'
 import { AccountPage } from './pages/Account'
+import { ExternalCallback } from './pages/External'
+import { SiteAdmin, PointsPage, OAuthConsent } from './pages/Site'
 import { Admin } from './pages/Admin'
 import { Landing, Dashboard, Guide } from './pages/Home'
 import { t } from './i18n/zh-CN'
 
 function Routes() {
   const { path, params } = useRoute()
-  useEffect(() => { window.scrollTo({ top: 0 })
-    document.title = `${t('brand')} · ${t('tagline')}` }, [path])
+  useEffect(() => { window.scrollTo({ top: 0 }) }, [path])
   let content
   if (path === '/') content = <Landing />
   else if (path === '/library') content = <Library key={path} mode="library" params={params} />
@@ -25,6 +26,10 @@ function Routes() {
   else if (/^\/texture\/[a-fA-F0-9]{32}$/.test(path)) content = <TextureDetail key={path} id={path.split('/')[2]} />
   else if (path === '/upload') content = <RequireAuth><Upload /></RequireAuth>
   else if (path === '/players') content = <RequireAuth><Players /></RequireAuth>
+  else if (path === '/oidc/callback') content = <ExternalCallback params={params} />
+  else if (path === '/admin/site') content = <RequireAuth><SiteAdmin /></RequireAuth>
+  else if (path === '/points') content = <RequireAuth><PointsPage /></RequireAuth>
+  else if (path === '/oauth/authorize') content = <RequireAuth><OAuthConsent params={params} /></RequireAuth>
   else if (path === '/account') content = <RequireAuth><AccountPage /></RequireAuth>
   else if (path === '/dashboard') content = <RequireAuth><Dashboard /></RequireAuth>
   else if (path === '/guide') content = <Guide />

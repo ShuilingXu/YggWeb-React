@@ -41,7 +41,12 @@ async function response(path: string, init: RequestInit = {}) {
     }
     if (expired && token === getToken()) { setToken('')
       window.dispatchEvent(new Event('ygg:expired')) }
-    throw new ApiError(result.status, expired ? t('reauthenticate') : statusMessage(result))
+    let message = statusMessage(result)
+    try { const body = await result.clone().json() as { error?: string }
+      if (body.error === 'InsufficientPoints') message = t('insufficientPoints')
+      if (body.error === 'AlreadySigned') message = t('alreadySigned')
+    } catch { /* 非 JSON 错误仍按状态码显示。 */ }
+    throw new ApiError(result.status, expired ? t('reauthenticate') : message)
   }
   return result
 }

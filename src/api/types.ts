@@ -29,7 +29,7 @@ export type Report = { id: string
 export type Audit = { id: number
   actor: string
   target: string
-  action: 0 | 1 | 2 | 3
+  action: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
   result: 0 | 1
   targetState: number
   targetPermission: number
@@ -41,3 +41,44 @@ export type Page<T> = { items: T[]
   next: boolean }
 export type Profile = Player & { properties: { name: string
   value: string }[] }
+
+export interface SiteSettings {
+  oidcEnabled: number
+  oidcIssuer: string
+  oidcClientId: string
+  oidcName: string
+  skinDomains: string
+  uploadCost: number
+  privateUploadCost: number
+  closetCost: number
+  name: string
+  description: string
+  announcement: string
+  registration: number
+  emailMode: number
+  emailDomains: string
+  maxPlayers: number
+  singleSession: number
+  signEnabled: number
+  signHours: number
+  signMin: number
+  signMax: number
+  initialPoints: number
+  playerCost: number
+  oauthEnabled: number
+}
+export interface Wallet {
+  balance: number
+  nextSignAt: string | null
+  entries: { id: number
+  delta: number
+  kind: number
+  createdAt: string }[]
+}
+export interface OAuthClient { id: string
+  name: string
+  redirectUri: string }
+
+export interface ExternalIdentity { id: string
+  issuer: string
+  createdAt: string }

@@ -19,7 +19,7 @@ YggServer-Go 的独立 React 前端。信息架构与操作关系参考 [Blessin
 
 下架条目会被后端同时从详情和个人列表隐藏。管理员可在审核页按 UUID 恢复；持有原详情地址的上传者可删除自己的条目。服务器校验权限，前端不放宽访问控制。
 
-积分、签到、OAuth/OIDC、PHP 插件管理等不在当前 Go 接口范围内，未实现，也没有用演示数据模拟这些功能。
+积分、签到、站点运营配置、本站 OAuth2 授权及第三方 OIDC 登录已接入 Go 原生接口；不提供 PHP 插件运行时。
 
 ## 运行
 
@@ -77,3 +77,22 @@ npm run build
 本次从仅含 `AGENTS.md` 的目录创建应用，之后按用户要求从 `https://github.com/ShuilingXu/YggWeb-React.git` 恢复远程可见的完整 Git 历史，当前分支 `gptlocal`，跟踪 `origin/gptlocal`。新版文件保留为相对该分支旧版前端的工作区改动，未提交、未推送。恢复过程未覆盖工作区文件，后端原有 README/HANDOVER 改动保留。
 
 下一步优先在真实 SMTP 与 Minecraft 环境补齐上述未覆盖路径，再进行站点上线配置和性能预算评估。
+
+
+## 站点运营与外部授权
+
+- `#/points`：积分余额、滚动签到间隔、下一次可签到的本地日期与时间、最近 50 条流水；不足与冷却错误由统一 client 映射。
+- `#/admin/site`：仅站点所有者可保存完整配置和管理 OAuth 公共客户端。名称、简介、公告、注册、邮箱域名白/黑名单、材质域名、角色上限、同类单会话、签到及消费价格、OAuth 服务开关、OIDC 提供方均由 `/api/site` 读取。后端强制规则，前端展示规则并限制可操作入口；减少角色上限不删除已有角色。
+- `#/oauth/authorize`：展示本站 OAuth 应用名称、精确回调与 User.Read/Player.Read 权限，同意或拒绝后回到应用。账号页查看和单独撤销授权；外部 OAuth token 不作为本站 Web 会话。
+- 登录页提供配置后的 OIDC 按钮；账号页可显式绑定和用本站密码解绑。`#/oidc/callback` 在提交前清除 code/state，校验同标签页 sessionStorage 中的发起状态，完成后仅将本站 Web token 存入既有 sessionStorage。提供方令牌与 Client Secret 不进入前端。StrictMode 下用可清理的延后效果确保一次性流程只消费一次。
+- 回调为 `YGG_PUBLIC_URL/oidc/callback`；通过该公开地址的 `/web/` 发起 OIDC，避免开发代理与回调 origin 不同导致 sessionStorage 校验失败。密钥通过后端环境配置，不在管理页面输入。新 OIDC 账号若需游戏密码或解绑，先通过 SMTP 邮件找回设置本站密码。
+
+后端规则、迁移、授权参数与费用语义以同级 YggServer-Go README 为准。新增功能不引入前端依赖，复用现有组件、请求、枚举映射与文案系统。
+
+### 运营功能浏览器验收（2026-10-18）
+
+- `npm run typecheck`、`npm run test`、`npm run build` 通过；既有 skinview3d 延迟加载包约 517 KB 的体积提醒仍存在。
+- 功能：站点配置、签到积分、OAuth 同意/拒绝、第三方 OIDC 登录与账号绑定。实际访问 `http://127.0.0.1:55407/web/#/admin/site`、`http://127.0.0.1:55405/web/#/login`、`#/points`、`#/account` 和 OAuth 授权页；最终新库注册签到为 `http://127.0.0.1:55415/web/#/register`。
+- 操作与看到：保存名称/公告后页面立即更新；本地标准 OIDC 提供方完成真实跳转并回到用户中心，回调凭据从地址栏移除；同意和拒绝 OAuth 均回到应用；最终新账号积分 1000→1083，签到按钮进入冷却，流水显示奖励与下次时间。
+- 实际查看 1280 宽度深浅主题和 375×812 深色布局；移动端触控未专项验收。页面 Console 未见未捕获异常；状态码由真实浏览器请求核对，工具没有独立 DevTools Network 面板。
+- 双库浏览器规则回归各通过 40+22 项，OIDC 各通过 15+16 项；完整范围见后端 README。未覆盖真实第三方平台、生产 TLS/密钥、外部 SMTP 与 Minecraft 客户端。临时服务已停止，截图保留在 TEMP，未部署或提交代码。
