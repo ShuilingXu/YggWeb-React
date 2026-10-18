@@ -1,0 +1,98 @@
+:root {
+  color-scheme: light;
+
+  --color-bg: #f4f5f6;
+  --color-bg-subtle: #eceeef;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f8f9;
+  --color-surface-raised: #ffffff;
+  --color-border: #d9dee3;
+  --color-border-strong: #b6bfc7;
+  --color-text: #171b1f;
+  --color-text-muted: #5c666f;
+  --color-text-inverse: #ffffff;
+  --color-accent: #2f6feb;
+  --color-accent-strong: #2458bd;
+  --color-accent-fg: #ffffff;
+  --color-success: #1f8a4c;
+  --color-success-bg: #e6f4ec;
+  --color-warning: #96610a;
+  --color-warning-bg: #fbf1dd;
+  --color-danger: #bd372c;
+  --color-danger-bg: #fbe9e7;
+  --color-focus: #2f6feb;
+  --color-checker-a: #e4e8eb;
+  --color-checker-b: #f2f4f5;
+  --color-overlay: rgba(18, 22, 26, 0.48);
+  --shadow-hard-sm: 2px 2px 0 0 rgba(18, 22, 26, 0.16);
+  --shadow-hard: 4px 4px 0 0 rgba(18, 22, 26, 0.18);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+
+  --font-sans: -apple-system, "Segoe UI", "Microsoft YaHei", "Noto Sans CJK SC", "PingFang SC", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 40px;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.6;
+
+  --duration-fast: 80ms;
+  --duration-base: 160ms;
+  --duration-slow: 240ms;
+
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  --container: 1120px;
+  --header-height: 56px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #14171a;
+  --color-bg-subtle: #1a1e22;
+  --color-surface: #1c2024;
+  --color-surface-2: #21262b;
+  --color-surface-raised: #242a30;
+  --color-border: #323941;
+  --color-border-strong: #4a535c;
+  --color-text: #e6e9ec;
+  --color-text-muted: #9aa4ad;
+  --color-text-inverse: #12161a;
+  --color-accent: #6f9dff;
+  --color-accent-strong: #8fb4ff;
+  --color-accent-fg: #0b1220;
+  --color-success: #45c07a;
+  --color-success-bg: #16301f;
+  --color-warning: #ffc14d;
+  --color-warning-bg: #322614;
+  --color-danger: #ff6b5e;
+  --color-danger-bg: #331a18;
+  --color-focus: #8fb4ff;
+  --color-checker-a: #262c31;
+  --color-checker-b: #1e2429;
+  --color-overlay: rgba(4, 6, 8, 0.66);
+  --shadow-hard-sm: 2px 2px 0 0 rgba(0, 0, 0, 0.5);
+  --shadow-hard: 4px 4px 0 0 rgba(0, 0, 0, 0.55);
+}

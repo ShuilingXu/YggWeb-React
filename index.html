@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Ygg 皮肤站</title>
+    <script>
+      // 首屏前决定主题，避免闪白；用户选择存本地，不属于凭证数据。
+      try {
+        const saved = localStorage.getItem('ygg.theme')
+        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        if (dark) document.documentElement.dataset.theme = 'dark'
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
