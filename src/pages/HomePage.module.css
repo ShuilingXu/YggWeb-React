@@ -1,0 +1,106 @@
+.splash {
+  height: calc(100vh - 57px);
+  min-height: 480px;
+  background: url('/assets/bs-background.webp') center top/cover no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  color: var(--color-white);
+}
+.splash > div {
+  width: 80%;
+  margin-bottom: var(--space-12);
+}
+.splash h1 {
+  font-family: Minecraft, 'Microsoft YaHei', sans-serif;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.5;
+  padding: 0.8em 0.5em 1em;
+  margin: 0.2em 0 0.5em;
+  color: var(--color-white);
+  text-shadow: var(--shadow-home);
+}
+.splash p {
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-12);
+  font-size: var(--font-lg);
+  color: var(--color-white);
+}
+.mainButton {
+  display: inline-block;
+  color: var(--color-white);
+  padding: 0.8em 2em;
+  border-radius: 5px;
+  border: 1px solid var(--color-white);
+  font-size: 20px;
+  background: transparent;
+  font-weight: 400;
+}
+.mainButton:hover {
+  color: var(--color-white);
+  background: var(--color-overlay-light);
+  text-decoration: none;
+}
+.intro {
+  text-align: center;
+  padding: 48px 24px;
+  border-top: 5px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+.intro h2 {
+  font-size: 32px;
+  font-weight: 400;
+  margin-bottom: 48px;
+}
+.features {
+  display: grid;
+  gap: 48px;
+  max-width: 1140px;
+  margin: auto;
+}
+.features svg {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
+}
+.features h3 {
+  font-size: 28px;
+  font-weight: 400;
+  margin-bottom: 12px;
+}
+.features p {
+  font-size: 16px;
+}
+.start {
+  background: var(--color-home-footer);
+  color: var(--color-white);
+  padding: 48px max(24px, calc((100% - 1140px) / 2));
+  display: flex;
+  gap: 48px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.start p {
+  max-width: 600px;
+}
+.start > a {
+  white-space: nowrap;
+}
+@media (min-width: 768px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 767px) {
+  .splash h1 {
+    font-size: 32px;
+  }
+  .splash > div {
+    width: 100%;
+    padding: 16px;
+  }
+}

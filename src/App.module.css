@@ -1,0 +1,334 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.header {
+  height: 57px;
+  background: var(--color-navbar);
+  color: var(--color-navbar-text);
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+}
+.headerInner {
+  max-width: var(--max-width);
+  padding: 8px 15px;
+  margin: auto;
+  height: 57px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.brand {
+  font-family: Minecraft, sans-serif;
+  font-size: 20px;
+  color: var(--color-white);
+  white-space: nowrap;
+}
+.brand:hover {
+  text-decoration: none;
+}
+.publicNav {
+  display: none;
+  align-items: center;
+  gap: 24px;
+}
+.publicNav a,
+.rightNav a,
+.navIcon {
+  color: var(--color-navbar-text);
+}
+.rightNav {
+  margin-left: auto;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  height: 100%;
+}
+.navIcon {
+  background: transparent;
+  border: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 38px;
+  padding: 4px;
+  font-size: 16px;
+}
+.uploadLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.uploadLink span {
+  display: none;
+}
+.anonymous {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+.userMenu {
+  height: 100%;
+  position: relative;
+}
+.userMenu > summary {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.userMenu > summary::-webkit-details-marker {
+  display: none;
+}
+.userMenu > summary::after {
+  content: '';
+  border: 4px solid transparent;
+  border-top-color: var(--color-navbar-text);
+  margin-top: 6px;
+}
+.userMenu > summary > span {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: none;
+}
+.userMenu > div {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 180px;
+  padding: 8px 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+}
+.userMenu > div > a,
+.userMenu > div > button {
+  display: block;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--color-text);
+  border: 0;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+}
+.userMenu > div > a:hover,
+.userMenu > div > button:hover {
+  background: var(--color-soft);
+  text-decoration: none;
+}
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 20px 15px;
+  min-width: 0;
+  outline: none;
+}
+.footer {
+  padding: 16px max(15px, calc((100% - 1110px) / 2));
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 14px;
+  color: var(--color-text);
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  line-height: 25px;
+}
+.footer strong {
+  font-weight: 600;
+}
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width);
+  z-index: 40;
+  background: var(--color-sidebar);
+  color: var(--color-sidebar-text);
+  box-shadow: var(--shadow-sidebar);
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform var(--duration);
+}
+.sideBrand {
+  font-family: Minecraft, sans-serif;
+  font-size: 20px;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 57px;
+  color: var(--color-white);
+  border-bottom: 1px solid var(--color-sidebar-border);
+}
+.sideBrand:hover {
+  text-decoration: none;
+}
+.sideIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 8px 0;
+  padding: 0 8px 16px;
+  border-bottom: 1px solid var(--color-sidebar-border);
+  color: var(--color-sidebar-text);
+  font-size: 16px;
+}
+.sideIdentity > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  background: var(--color-avatar-bg);
+  color: var(--color-sidebar-text);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.sideNav {
+  padding: 8px;
+}
+.sideCaption {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--color-sidebar-text);
+}
+.sideNav > a {
+  color: var(--color-sidebar-text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  margin-bottom: 3px;
+  border-radius: 4px;
+  line-height: 24px;
+}
+.sideNav > a:hover {
+  background: var(--color-sidebar-hover);
+  color: var(--color-white);
+  text-decoration: none;
+}
+.sideNav .selected {
+  background: var(--color-sidebar-active);
+  color: var(--color-white);
+  box-shadow: var(--shadow);
+}
+.sideNav svg {
+  width: 22px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.sidebarLayout .headerInner {
+  max-width: none;
+}
+.sidebarLayout .main {
+  max-width: none;
+}
+.sidebarLayout .footer {
+  padding: 16px;
+}
+.menuOpen .sidebar {
+  transform: translateX(0);
+}
+.sidebarOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  z-index: 30;
+  border: 0;
+}
+.mobileLinks {
+  position: absolute;
+  top: 57px;
+  width: 100%;
+  background: var(--color-navbar);
+  display: grid;
+  padding: 8px 16px;
+  gap: 12px;
+}
+.mobileLinks a {
+  color: var(--color-white);
+}
+.authPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--color-soft);
+}
+.homeLayout .main {
+  padding: 0;
+  max-width: none;
+}
+.homeLayout .footer {
+  background: var(--color-home-copyright);
+  color: var(--color-white);
+  border: 0;
+}
+.homeLayout .footer a {
+  color: var(--color-white);
+}
+.skip {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  z-index: 60;
+  background: var(--color-surface);
+  padding: 12px;
+}
+.skip:focus {
+  top: 0;
+}
+@media (min-width: 576px) {
+  .uploadLink span,
+  .userMenu > summary > span {
+    display: inline;
+  }
+}
+@media (min-width: 768px) {
+  .publicNav {
+    display: flex;
+  }
+  .publicMenuButton {
+    display: none;
+  }
+}
+@media (min-width: 992px) {
+  .sidebar {
+    transform: translateX(0);
+  }
+  .sidebarLayout .header,
+  .sidebarLayout .main,
+  .sidebarLayout .footer {
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+  }
+  .menuOpen.sidebarLayout .sidebar {
+    transform: translateX(-100%);
+  }
+  .menuOpen.sidebarLayout .header,
+  .menuOpen.sidebarLayout .main,
+  .menuOpen.sidebarLayout .footer {
+    margin-left: 0;
+    width: 100%;
+  }
+  .sidebarOverlay {
+    display: none;
+  }
+}
