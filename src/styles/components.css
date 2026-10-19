@@ -181,3 +181,5 @@ dialog { border: 1px solid var(--line); border-radius: var(--r1); padding: var(-
   .landing-feature { padding: var(--s5) }
   .landing-note { font-size: var(--f0) }
 }
+
+.plugin-result { white-space: pre-wrap; overflow-wrap: anywhere; }

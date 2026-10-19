@@ -45,6 +45,7 @@ async function response(path: string, init: RequestInit = {}) {
     try { const body = await result.clone().json() as { error?: string }
       if (body.error === 'InsufficientPoints') message = t('insufficientPoints')
       if (body.error === 'AlreadySigned') message = t('alreadySigned')
+      if (body.error === 'PluginDenied') message = t('pluginDenied')
     } catch { /* 非 JSON 错误仍按状态码显示。 */ }
     throw new ApiError(result.status, expired ? t('reauthenticate') : message)
   }

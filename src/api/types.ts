@@ -82,3 +82,15 @@ export interface OAuthClient { id: string
 export interface ExternalIdentity { id: string
   issuer: string
   createdAt: string }
+
+export interface PluginInfo {
+  id: string
+  version: string
+  apiVersion: number
+  description: string
+  enabled: number
+  actions: string[]
+  before: boolean
+  after: boolean
+  endpoints: string[]
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { pointKindLabel } from '../api/enums'
 import { api } from '../api/resources'
-import type { SiteSettings } from '../api/types'
+import type { SiteSettings, PluginInfo } from '../api/types'
 import { useAsync } from '../lib/useAsync'
 import { useAction } from '../lib/useAction'
 import { useAuth } from '../lib/auth'
@@ -52,7 +52,7 @@ export function SiteAdmin() {
     void action.run(signal => api.saveSite(value, signal), t('settingsSaved'), () => window.dispatchEvent(new Event('ygg:site')))
   }
   return <div className="stack"><h1>{t('siteSettings')}</h1><p>{t('settingsHint')}</p><p>{t('oidcSetupHint')}</p><form className="panel stack" onSubmit={save}>{fields.map(field => <Field key={field.key} label={t(field.label)}>{field.kind === 'toggle' || field.kind === 'mode' ? <select value={value[field.key]} onChange={e => setDraft({ ...value, [field.key]: Number(e.target.value) })}>{(field.kind === 'mode' ? ['unrestricted', 'allowDomains', 'denyDomains'] : ['disabled', 'enabled']).map((label, index) => <option value={index} key={index}>{t(label as MessageKey)}</option>)}</select> : <input name={field.key} type={field.kind} min={field.key === 'maxPlayers' || field.key === 'signHours' ? 1 : 0} step={1} max={field.kind === 'number' ? field.key === 'maxPlayers' ? 100 : field.key === 'signHours' ? 8760 : 1000000 : undefined} maxLength={field.key === 'name' ? 100 : field.key === 'description' ? 1000 : field.key === 'announcement' ? 4000 : 2000} value={value[field.key]} required={field.key === 'name' || field.kind === 'number'} onChange={e => setDraft({ ...value, [field.key]: field.kind === 'number' ? Number(e.target.value) : e.target.value })} />}</Field>)}<Button type="submit" busy={action.busy}>{t('save')}</Button></form>
-    <section className="panel stack"><h2>{t('oauthClients')}</h2><p>{t('oauthHint')}</p>{clients.error && <ErrorState message={clients.error} retry={clients.reload} />}{clients.value?.map(c => <div className="stack" key={c.id}><strong>{c.name}</strong><p>{t('clientId')}: <code>{c.id}</code></p><p className="mono">{c.redirectUri}</p><Button variant="danger" busy={action.busy} onClick={() => action.run(signal => api.deleteClient(c.id, signal), t('success'), clients.reload)}>{t('remove')}</Button></div>)}<form className="stack" onSubmit={e => { e.preventDefault()
+    <PluginPanel /><section className="panel stack"><h2>{t('oauthClients')}</h2><p>{t('oauthHint')}</p>{clients.error && <ErrorState message={clients.error} retry={clients.reload} />}{clients.value?.map(c => <div className="stack" key={c.id}><strong>{c.name}</strong><p>{t('clientId')}: <code>{c.id}</code></p><p className="mono">{c.redirectUri}</p><Button variant="danger" busy={action.busy} onClick={() => action.run(signal => api.deleteClient(c.id, signal), t('success'), clients.reload)}>{t('remove')}</Button></div>)}<form className="stack" onSubmit={e => { e.preventDefault()
       const form = e.currentTarget
       const data = new FormData(form)
       void action.run(signal => api.createClient(String(data.get('name')), String(data.get('redirect')), signal), t('success'), () => { form.reset()
@@ -99,4 +99,16 @@ export function AuthorizedApps() {
   const grants = useAsync(api.grants, [])
   const action = useAction()
   return <section className="panel stack"><h2>{t('oauthClients')}</h2>{grants.loading ? <Skeleton /> : grants.error ? <ErrorState message={grants.error} retry={grants.reload} /> : !grants.value?.length ? <p>{t('noOAuthApps')}</p> : grants.value.map(c => <div key={c.id}><strong>{c.name}</strong><Button busy={action.busy} onClick={() => action.run(signal => api.revokeGrant(c.id, signal), t('success'), grants.reload)}>{t('revokeAuthorization')}</Button></div>)}{action.error && <p className="field-error" role="alert">{action.error}</p>}</section>
+}
+
+function PluginPanel() {
+  const plugins = useAsync(api.plugins, [])
+  return <section className="panel stack"><h2>{t('plugins')}</h2><p>{t('pluginsHint')}</p>{plugins.loading ? <Skeleton /> : plugins.error ? <ErrorState message={plugins.error} retry={plugins.reload} /> : !plugins.value?.length ? <p>{t('noPlugins')}</p> : plugins.value.map(info => <PluginCard key={info.id} info={info} />)}</section>
+}
+
+function PluginCard({ info }: { info: PluginInfo }) {
+  const action = useAction()
+  const [result, setResult] = useState<string>()
+  return <div className="stack"><h3>{info.id} · {t(info.enabled ? 'enabled' : 'disabled')}</h3><p>{info.description}</p><p>{t('pluginVersion')}: {info.version} · {t('pluginApi')}: {info.apiVersion}</p><p>{t('pluginHooks')}: {info.actions.join(' · ')}</p><p>{[info.before && t('pluginBefore'), info.after && t('pluginAfter')].filter(Boolean).join(' · ')}</p>{info.enabled === 1 && info.endpoints.map(path => <Button key={path} busy={action.busy} onClick={() => action.run(async signal => { const value = await api.pluginQuery(info.id, path, signal)
+    setResult(JSON.stringify(value, null, 2)) })}>{t('pluginQuery', { path })}</Button>)}{result && <pre className="plugin-result">{result}</pre>}{action.error && <p className="field-error" role="alert">{action.error}</p>}</div>
 }

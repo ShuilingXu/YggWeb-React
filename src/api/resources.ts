@@ -1,7 +1,9 @@
 import { listWithMeta, request, send } from './client'
-import type { Account, Audit, ExternalIdentity, SiteSettings, Wallet, OAuthClient, Player, Profile, Report, Texture } from './types'
+import type { Account, Audit, PluginInfo, ExternalIdentity, SiteSettings, Wallet, OAuthClient, Player, Profile, Report, Texture } from './types'
 
 export const api = {
+  plugins: (signal?: AbortSignal) => request<PluginInfo[]>('/api/admin/plugins', { signal }),
+  pluginQuery: (id: string, path: string, signal?: AbortSignal) => request<unknown>(`/api/plugins/${encodeURIComponent(id)}${path}`, { signal }),
   startExternal: (link: boolean, signal?: AbortSignal) => send<{ url: string
   state: string }>(link ? '/api/account/oidc/start' : '/api/auth/oidc/start', 'POST', undefined, signal),
   completeExternal: (state: string, code: string, signal?: AbortSignal) => send<{ accessToken: string }>('/api/auth/oidc/complete', 'POST', { state, code }, signal),
