@@ -104,3 +104,7 @@
     padding: 16px;
   }
 }
+
+.splash h1 {
+  overflow-wrap: anywhere;
+}

@@ -110,6 +110,17 @@ async function request<T>(
           if (controller.signal.aborted) throw new ApiError(timedOut ? 'timeout' : 'aborted')
         }
       }
+      let failure: ErrorKind = kind(response.status)
+      try {
+        const body: unknown = await response.json()
+        if (typeof body === 'object' && body !== null && 'error' in body) {
+          if (body.error === 'InsufficientPoints') failure = 'insufficientPoints'
+          if (body.error === 'AlreadySigned') failure = 'alreadySigned'
+          if (body.error === 'PluginDenied') failure = 'pluginDenied'
+        }
+      } catch {
+        /* 错误正文不是 JSON 时沿用状态码文案。 */
+      }
       const raw = response.headers.get('Retry-After')
       const retry =
         raw === null
@@ -118,7 +129,7 @@ async function request<T>(
             ? Number(raw)
             : Math.max(0, Math.ceil((Date.parse(raw) - Date.now()) / 1000))
       throw new ApiError(
-        kind(response.status),
+        failure,
         response.status,
         retry !== null && Number.isFinite(retry) ? retry : null,
       )

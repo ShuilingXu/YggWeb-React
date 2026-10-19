@@ -9,6 +9,16 @@ export function validPassword(value: string) {
 export function validEmail(value: string) {
   return value.length <= 255 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 }
+export function allowsEmailDomain(
+  value: string,
+  rule: { emailMode: number; emailDomains: string },
+) {
+  const domain = value.trim().toLowerCase().split('@').at(-1) ?? ''
+  const listed = rule.emailDomains.toLowerCase().split(/\s+/).includes(domain)
+  return (
+    rule.emailMode === 0 || (rule.emailMode === 1 && listed) || (rule.emailMode === 2 && !listed)
+  )
+}
 export function validTextureName(value: string) {
   return value.trim().length > 0 && Array.from(value).length <= 50
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import * as api from '../api/players'
 import { errorMessage } from '../api/client'
-import type { Player } from '../api/types'
+import type { Player, SiteSettings } from '../api/types'
 import { shortHash } from '../lib/format'
 import { Button, Dialog, Field, Notice, EmptyState } from '../components/UI'
 import { t } from '../i18n/zh-CN'
@@ -18,7 +18,7 @@ const helps = {
   clear: 'players.clearHelp',
   delete: 'players.deleteHelp',
 } as const
-export function PlayersPage() {
+export function PlayersPage({ site }: { site: SiteSettings | null }) {
   const [players, setPlayers] = useState<Player[]>([]),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
@@ -178,10 +178,17 @@ export function PlayersPage() {
             </table>
           </div>
           <footer className={styles.footer}>
-            <Button disabled={busy || players.length >= 20} onClick={() => setCreating(true)}>
+            <Button
+              disabled={busy || !site || players.length >= site.maxPlayers}
+              onClick={() => setCreating(true)}
+            >
               ＋ {t('players.create')}
             </Button>
-            <small>{t('players.limit')}</small>
+            <small>
+              {site
+                ? t('ops.playerLimit', { max: site.maxPlayers, cost: site.playerCost })
+                : t('ops.loading')}
+            </small>
           </footer>
         </section>
         <div className="stack">

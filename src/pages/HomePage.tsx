@@ -1,13 +1,20 @@
 import { PlayersIcon, ShareIcon, CloudIcon } from '../components/Icons'
+import type { SiteSettings } from '../api/types'
 import { t } from '../i18n/zh-CN'
 import styles from './HomePage.module.css'
-export function HomePage({ signedIn = false }: { signedIn?: boolean }) {
+export function HomePage({
+  signedIn = false,
+  site,
+}: {
+  signedIn?: boolean
+  site: SiteSettings | null
+}) {
   return (
     <>
       <section className={styles.splash}>
         <div>
-          <h1>{t('brand.name')}</h1>
-          <p>{t('home.siteDescription')}</p>
+          <h1>{site?.name || t('brand.name')}</h1>
+          <p>{site?.description || t('home.siteDescription')}</p>
           <a className={styles.mainButton} href={signedIn ? '#/user/closet' : '#/auth/register'}>
             {t(signedIn ? 'nav.center' : 'nav.register')}
           </a>

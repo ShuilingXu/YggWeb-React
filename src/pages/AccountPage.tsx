@@ -1,13 +1,22 @@
 import { useState, type FormEvent } from 'react'
 import * as api from '../api/account'
 import { errorMessage } from '../api/client'
-import type { Account } from '../api/types'
-import { validPassword } from '../lib/validation'
+import { AuthorizedAccounts } from './AuthorizationPage'
+import type { Account, SiteSettings } from '../api/types'
+import { validPassword, allowsEmailDomain } from '../lib/validation'
 import { formatDate } from '../lib/format'
 import { Button, Field, Notice, Dialog } from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import styles from './AccountPage.module.css'
-export function AccountPage({ account, onLogout }: { account: Account; onLogout: () => void }) {
+export function AccountPage({
+  account,
+  onLogout,
+  site,
+}: {
+  account: Account
+  onLogout: () => void
+  site: SiteSettings | null
+}) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
@@ -39,6 +48,10 @@ export function AccountPage({ account, onLogout }: { account: Account; onLogout:
     }
     if (kind === 'password')
       void perform(() => api.changePassword(password, next), t('account.relogin'), true)
+    if (kind === 'email' && site && !allowsEmailDomain(String(data.get('email') ?? ''), site)) {
+      setError(t('ops.domainRejected'))
+      return
+    }
     if (kind === 'email')
       void perform(
         () => api.changeEmail(password, String(data.get('email') ?? '')),
@@ -158,7 +171,17 @@ export function AccountPage({ account, onLogout }: { account: Account; onLogout:
               <h2>{t('account.changeEmail')}</h2>
             </header>
             <div className={`${styles.body} stack`}>
-              <Field label={t('account.newEmail')}>
+              <Field
+                label={t('account.newEmail')}
+                help={
+                  site?.emailMode
+                    ? t('ops.domains', {
+                        mode: t(site.emailMode === 1 ? 'ops.allow' : 'ops.deny'),
+                        domains: site.emailDomains,
+                      })
+                    : undefined
+                }
+              >
                 <input
                   name="email"
                   type="email"
@@ -179,6 +202,7 @@ export function AccountPage({ account, onLogout }: { account: Account; onLogout:
           <Notice>{t('account.sessionWarning')}</Notice>
         </div>
       </div>
+      <AuthorizedAccounts site={site} onLogout={onLogout} />
       <Dialog
         open={deleting}
         onClose={() => {

@@ -1,4 +1,8 @@
-import { Component, useEffect, useState, type ReactNode } from 'react'
+import { getSite } from './api/site'
+import { useResource } from './lib/useResource'
+import { SiteAdmin, PointsPage, CostRules } from './pages/OperationsPage'
+import { ExternalCallback, OAuthConsent } from './pages/AuthorizationPage'
+import { Component, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { clearAccessToken, errorMessage, subscribeAuthExpired } from './api/client'
 import { logout } from './api/auth'
 import type { Account } from './api/types'
@@ -47,6 +51,7 @@ const navigate = (path: string) => {
 }
 const userLinks = [
   { href: '/user', key: 'nav.center', Icon: UserIcon },
+  { href: '/user/points', key: 'ops.points', Icon: UserIcon },
   { href: '/user/closet', key: 'nav.closet', Icon: ClosetIcon },
   { href: '/user/player', key: 'nav.players', Icon: PlayersIcon },
   { href: '/user/profile', key: 'nav.account', Icon: SettingsIcon },
@@ -58,6 +63,12 @@ const adminLinks = [
   { href: '/admin/audit', key: 'nav.audit', Icon: AuditIcon },
 ]
 function Site() {
+  const site = useResource(getSite)
+  const settings = site.value ?? null
+  const authenticatedExternal = useCallback((account: Account, destination: string) => {
+    setAccount(account)
+    navigate(destination)
+  }, [])
   const [hash, setHash] = useState(location.hash.slice(1) || '/')
   const [account, setAccount] = useState<Account | null>(null)
   const [menu, setMenu] = useState(false)
@@ -80,15 +91,19 @@ function Site() {
       }),
     [],
   )
-  const [path = '/', search = ''] = hash.split('?')
+  const separator = hash.indexOf('?')
+  const path = separator < 0 ? hash : hash.slice(0, separator)
+  const search = separator < 0 ? '' : hash.slice(separator + 1)
   const sidebar = path.startsWith('/user') || path.startsWith('/admin')
   const home = path === '/'
-  const needsLogin = !account && (sidebar || path === '/skinlib/upload')
+  const needsLogin =
+    !account && (sidebar || path === '/skinlib/upload' || path === '/oauth/authorize')
   const auth = path.startsWith('/auth') || needsLogin
   const admin = path.startsWith('/admin')
+  const adminNavigation = admin && !!account && account.permission > 0
   useEffect(() => {
-    document.title = t('brand.name')
-  }, [])
+    document.title = settings?.name || t('brand.name')
+  }, [settings?.name])
   async function exit() {
     try {
       await logout()
@@ -109,14 +124,23 @@ function Site() {
     }
   }
   let page: ReactNode
-  if (needsLogin)
+  if (path === '/oidc/callback')
+    page = <ExternalCallback search={search} onAuthenticated={authenticatedExternal} />
+  else if (needsLogin)
     page = (
-      <AuthPage key="required" mode="login" onNavigate={navigate} onAuthenticated={setAccount} />
+      <AuthPage
+        key="required"
+        mode="login"
+        site={settings}
+        returnTo={hash}
+        onNavigate={navigate}
+        onAuthenticated={setAccount}
+      />
     )
-  else if (home) page = <HomePage signedIn={!!account} />
+  else if (home) page = <HomePage signedIn={!!account} site={settings} />
   else if (path === '/skinlib') page = <LibraryPage search={search} account={account} />
   else if (path === '/skinlib/upload')
-    page = <UploadPage onUploaded={(id) => navigate('/skinlib/show/' + id)} />
+    page = <UploadPage site={settings} onUploaded={(id) => navigate('/skinlib/show/' + id)} />
   else if (path.startsWith('/skinlib/show/'))
     page = <TexturePage key={path} id={path.slice(14)} account={account} />
   else if (path === '/user') page = account && <UserHomePage account={account} />
@@ -129,11 +153,28 @@ function Site() {
         account={account}
       />
     )
-  else if (path === '/user/player') page = <PlayersPage />
+  else if (path === '/user/player') page = <PlayersPage site={settings} />
+  else if (path === '/user/points')
+    page = settings ? <PointsPage site={settings} /> : <p>{t('ops.loading')}</p>
+  else if (path === '/oauth/authorize') page = <OAuthConsent key={search} search={search} />
+  else if (admin && account?.permission === 0)
+    page = <Notice tone="error">{t('ops.adminOnly')}</Notice>
+  else if (path === '/admin/site')
+    page =
+      account?.permission === 2 ? (
+        settings ? (
+          <SiteAdmin site={settings} onSaved={site.reload} />
+        ) : (
+          <p>{t('ops.loading')}</p>
+        )
+      ) : (
+        <Notice tone="error">{t('ops.forbidden')}</Notice>
+      )
   else if (path === '/user/profile' && account)
     page = (
       <AccountPage
         account={account}
+        site={settings}
         onLogout={() => {
           clearAccessToken()
           setAccount(null)
@@ -155,6 +196,7 @@ function Site() {
     page = (
       <AuthPage
         key={path}
+        site={settings}
         mode={path.endsWith('register') ? 'register' : path.endsWith('forgot') ? 'forgot' : 'login'}
         onNavigate={navigate}
         onAuthenticated={(a) => {
@@ -175,6 +217,12 @@ function Site() {
     return (
       <div className={styles.authPage}>
         {message && <Notice tone="error">{message}</Notice>}
+        {site.error && (
+          <Notice tone="error">
+            {site.error}
+            <Button onClick={site.reload}>{t('common.retry')}</Button>
+          </Notice>
+        )}
         {page}
       </div>
     )
@@ -205,7 +253,7 @@ function Site() {
             </button>
           ) : (
             <a className={styles.brand} href="#/">
-              {t('brand.name')}
+              {settings?.name || t('brand.name')}
             </a>
           )}
           {!sidebar && (
@@ -266,7 +314,7 @@ function Site() {
         <>
           <aside className={styles.sidebar}>
             <a className={styles.sideBrand} href="#/">
-              {t('brand.name')}
+              {settings?.name || t('brand.name')}
             </a>
             <div className={styles.sideIdentity}>
               <span className={styles.avatar}>
@@ -275,8 +323,18 @@ function Site() {
               <span>{account?.email.split('@')[0]}</span>
             </div>
             <nav className={styles.sideNav}>
-              <div className={styles.sideCaption}>{t(admin ? 'nav.admin' : 'nav.center')}</div>
-              {(admin ? adminLinks : userLinks).map(({ href, key, Icon }) => (
+              <div className={styles.sideCaption}>
+                {t(adminNavigation ? 'nav.admin' : 'nav.center')}
+              </div>
+              {(adminNavigation
+                ? [
+                    ...(account?.permission === 2
+                      ? [{ href: '/admin/site', key: 'ops.site', Icon: SettingsIcon }]
+                      : []),
+                    ...adminLinks,
+                  ]
+                : userLinks
+              ).map(({ href, key, Icon }) => (
                 <a key={href} href={'#' + href} className={path === href ? styles.selected : ''}>
                   <Icon />
                   <span>{t(key)}</span>
@@ -291,7 +349,7 @@ function Site() {
                 <UploadIcon />
                 <span>{t('nav.upload')}</span>
               </a>
-              {admin ? (
+              {adminNavigation ? (
                 <a href="#/user">
                   <UserIcon />
                   <span>{t('nav.center')}</span>
@@ -318,11 +376,24 @@ function Site() {
       )}
       <main id="main" tabIndex={-1} className={styles.main}>
         {message && <Notice tone="error">{message}</Notice>}
+        {site.error && (
+          <Notice tone="error">
+            {site.error}
+            <Button onClick={site.reload}>{t('common.retry')}</Button>
+          </Notice>
+        )}
+        {settings?.announcement && <Notice>{settings.announcement}</Notice>}
+        {settings && (path === '/user/closet' || path.startsWith('/skinlib/show/')) && (
+          <Notice>
+            <CostRules site={settings} />
+          </Notice>
+        )}
         {page}
       </main>
       <footer className={styles.footer}>
         <strong>
-          Copyright © {new Date().getFullYear()} <a href="#/">{t('brand.name')}</a>.
+          Copyright © {new Date().getFullYear()}{' '}
+          <a href="#/">{settings?.name || t('brand.name')}</a>.
         </strong>
         <span>{t('footer.rights')}</span>
       </footer>

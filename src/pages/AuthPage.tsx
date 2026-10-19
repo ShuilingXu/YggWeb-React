@@ -2,17 +2,22 @@ import { useState, type FormEvent } from 'react'
 import * as auth from '../api/auth'
 import { getAccount } from '../api/account'
 import { errorMessage } from '../api/client'
-import type { Account } from '../api/types'
-import { validPassword } from '../lib/validation'
+import { ExternalLoginButton } from './AuthorizationPage'
+import type { Account, SiteSettings } from '../api/types'
+import { validPassword, allowsEmailDomain } from '../lib/validation'
 import { Button, Field, Notice } from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import styles from './AuthPage.module.css'
 const labels = { login: 'auth.login', register: 'auth.register', forgot: 'auth.forgot' } as const
 export function AuthPage({
   mode,
+  site,
+  returnTo,
   onAuthenticated,
   onNavigate,
 }: {
+  site: SiteSettings | null
+  returnTo?: string
   mode: 'login' | 'register' | 'forgot'
   onAuthenticated: (account: Account) => void
   onNavigate: (path: string) => void
@@ -38,6 +43,16 @@ export function AuthPage({
       setField({ confirm: t('auth.passwordMismatch') })
       form.querySelector<HTMLInputElement>('[name=confirm]')?.focus()
       return
+    }
+    if (mode === 'register') {
+      if (!site || site.registration !== 1) {
+        setError(t(site ? 'ops.registrationClosed' : 'ops.loading'))
+        return
+      }
+      if (!allowsEmailDomain(value('email'), site)) {
+        setError(t('ops.domainRejected'))
+        return
+      }
     }
     setBusy(true)
     try {
@@ -66,10 +81,28 @@ export function AuthPage({
   return (
     <div className={styles.box}>
       <a className={styles.logo} href="#/">
-        {t('brand.name')}
+        {site?.name || t('brand.name')}
       </a>
       <section className={`panel ${styles.card}`}>
         <p className={styles.intro}>{mode === 'login' ? t('auth.intro') : t(labels[mode])}</p>
+        {mode === 'register' && (
+          <>
+            {!site ? (
+              <Notice>{t('ops.loading')}</Notice>
+            ) : site.registration !== 1 ? (
+              <Notice>{t('ops.registrationClosed')}</Notice>
+            ) : (
+              site.emailMode !== 0 && (
+                <Notice>
+                  {t('ops.domains', {
+                    mode: t(site.emailMode === 1 ? 'ops.allow' : 'ops.deny'),
+                    domains: site.emailDomains,
+                  })}
+                </Notice>
+              )
+            )}
+          </>
+        )}
         <form key={mode} className="stack" onSubmit={submit} onChange={() => setField({})}>
           {error && <Notice tone="error">{error}</Notice>}
           {message && <Notice tone="success">{message}</Notice>}
@@ -113,8 +146,11 @@ export function AuthPage({
               />
             </Field>
           )}
-          <Button disabled={busy}>{busy ? t('common.working') : t(labels[mode])}</Button>
+          <Button disabled={busy || (mode === 'register' && (!site || site.registration !== 1))}>
+            {busy ? t('common.working') : t(labels[mode])}
+          </Button>
         </form>
+        {mode === 'login' && site && <ExternalLoginButton site={site} returnTo={returnTo} />}
         <div className={styles.links}>
           {(['login', 'register', 'forgot'] as const)
             .filter((item) => item !== mode)

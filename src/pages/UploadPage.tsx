@@ -2,12 +2,20 @@ import { useState, type FormEvent, type DragEvent } from 'react'
 import { uploadTexture } from '../api/textures'
 import { errorMessage } from '../api/client'
 import { validateTextureFile, validTextureName } from '../lib/validation'
+import type { SiteSettings } from '../api/types'
+import { CostRules } from './OperationsPage'
 import type { TextureType } from '../api/enums'
 import { SkinViewer } from '../components/SkinViewer'
 import { Button, Field, Notice } from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import styles from './UploadPage.module.css'
-export function UploadPage({ onUploaded }: { onUploaded: (id: string) => void }) {
+export function UploadPage({
+  onUploaded,
+  site,
+}: {
+  onUploaded: (id: string) => void
+  site: SiteSettings | null
+}) {
   const [file, setFile] = useState<File | null>(null)
   const [type, setType] = useState<TextureType>(0)
   const [name, setName] = useState('')
@@ -66,6 +74,11 @@ export function UploadPage({ onUploaded }: { onUploaded: (id: string) => void })
       <div className="page-heading">
         <h1>{t('upload.title')}</h1>
       </div>
+      {site && (
+        <Notice>
+          <CostRules site={site} />
+        </Notice>
+      )}
       <form onSubmit={submit} className={styles.columns}>
         <div className="stack">
           <section className="panel panel-primary stack">

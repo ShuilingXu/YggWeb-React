@@ -13,6 +13,21 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('请求与身份边界', () => {
+  it.each([
+    ['InsufficientPoints', 409, 'insufficientPoints'],
+    ['AlreadySigned', 409, 'alreadySigned'],
+    ['PluginDenied', 403, 'pluginDenied'],
+  ])('业务错误 %s 显示专用提示，且不泄漏后端原文', async (code, status, kind) => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ error: code, errorMessage: 'sensitive' }, { status: Number(status) }),
+        ),
+    )
+    await expect(requestEmpty('/api/account/sign')).rejects.toMatchObject({ kind })
+  })
   it('401 清空内存凭证并通知页面', async () => {
     const fetcher = vi
       .fn()

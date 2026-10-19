@@ -1,5 +1,5 @@
 import { requestJSON, requestEmpty, setAccessToken, clearAccessToken } from './client'
-import { isLogin } from './validate'
+import { isLogin, isExternalStart } from './validate'
 export async function login(body: { username: string; password: string }, signal?: AbortSignal) {
   const result = await requestJSON('/api/auth/login', isLogin, {
     method: 'POST',
@@ -43,4 +43,21 @@ export function resetPassword(token: string, newPassword: string, signal?: Abort
     signal,
     authenticated: false,
   })
+}
+
+export const startExternal = (link: boolean, signal?: AbortSignal) =>
+  requestJSON(link ? '/api/account/oidc/start' : '/api/auth/oidc/start', isExternalStart, {
+    method: 'POST',
+    signal,
+    authenticated: link,
+  })
+export async function completeExternal(state: string, code: string, signal?: AbortSignal) {
+  const result = await requestJSON('/api/auth/oidc/complete', isLogin, {
+    method: 'POST',
+    body: { state, code },
+    signal,
+    authenticated: false,
+  })
+  setAccessToken(result.accessToken)
+  return result
 }

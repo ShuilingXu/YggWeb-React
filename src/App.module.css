@@ -332,3 +332,10 @@
     display: none;
   }
 }
+
+.brand,
+.sideBrand {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45vw;
+}

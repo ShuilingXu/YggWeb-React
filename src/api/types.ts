@@ -74,10 +74,62 @@ export interface AuditEvent {
   id: number
   actor: string
   target: string
-  action: 0 | 1 | 2 | 3
+  action: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
   requestId: string
   result: 0 | 1
   targetState: -1 | AccountState
   targetPermission: -1 | Permission
   createdAt: string
+}
+
+export interface SiteSettings {
+  name: string
+  description: string
+  announcement: string
+  registration: number
+  emailMode: number
+  emailDomains: string
+  skinDomains: string
+  maxPlayers: number
+  singleSession: number
+  signEnabled: number
+  signHours: number
+  signMin: number
+  signMax: number
+  initialPoints: number
+  playerCost: number
+  uploadCost: number
+  privateUploadCost: number
+  closetCost: number
+  oauthEnabled: number
+  oidcEnabled: number
+  oidcIssuer: string
+  oidcClientId: string
+  oidcName: string
+}
+export interface Wallet {
+  balance: number
+  nextSignAt: string | null
+  entries: { id: number; delta: number; kind: 0 | 1 | 2 | 3 | 4 | 5; createdAt: string }[]
+}
+export interface OAuthClient {
+  id: string
+  name: string
+  redirectUri: string
+}
+export interface ExternalIdentity {
+  id: string
+  issuer: string
+  createdAt: string
+}
+export interface PluginInfo {
+  id: string
+  version: string
+  apiVersion: number
+  description: string
+  enabled: number
+  actions: string[]
+  before: boolean
+  after: boolean
+  endpoints: string[]
 }
