@@ -3,7 +3,9 @@ import type {
   AccountState,
   AuditAction,
   AuditResult,
+  EmailMode,
   Permission,
+  PointKind,
   ReportResolution,
   ReportState,
   TextureState,
@@ -17,6 +19,15 @@ export const ACCOUNT_STATE = { ACTIVE: 0, BANNED: 1, DELETED: 2 } as const
 export const PERMISSION = { USER: 0, ADMIN: 1, OWNER: 2 } as const
 export const REPORT_STATE = { PENDING: 0, RESOLVED: 1, REJECTED: 2 } as const
 export const REPORT_RESOLUTION = { HIDE: 1, REJECT: 2 } as const
+export const EMAIL_MODE = { UNRESTRICTED: 0, ALLOW: 1, DENY: 2 } as const
+export const POINT_KIND = {
+  INITIAL: 0,
+  SIGN: 1,
+  PLAYER: 2,
+  UPLOAD: 3,
+  CLOSET: 4,
+  PRIVACY: 5,
+} as const
 
 const TEXTURE_TYPES: Record<number, { labelKey: string; tone: string }> = {
   [TEXTURE_TYPE.STEVE]: { labelKey: 'enum.textureType.0', tone: 'steve' },
@@ -86,4 +97,39 @@ export function auditResultTone(result: AuditResult | number): string {
   if (result === 1) return 'muted'
   if (result === -1) return 'muted'
   return 'ok'
+}
+
+const POINT_KINDS: Record<number, { labelKey: string; tone: string }> = {
+  [POINT_KIND.INITIAL]: { labelKey: 'enum.pointKind.0', tone: 'gold' },
+  [POINT_KIND.SIGN]: { labelKey: 'enum.pointKind.1', tone: 'ok' },
+  [POINT_KIND.PLAYER]: { labelKey: 'enum.pointKind.2', tone: 'lapis' },
+  [POINT_KIND.UPLOAD]: { labelKey: 'enum.pointKind.3', tone: 'lapis' },
+  [POINT_KIND.CLOSET]: { labelKey: 'enum.pointKind.4', tone: 'lapis' },
+  [POINT_KIND.PRIVACY]: { labelKey: 'enum.pointKind.5', tone: 'warn' },
+}
+
+export function pointKindLabel(kind: PointKind | number): string {
+  return t(POINT_KINDS[kind]?.labelKey ?? 'common.unknown')
+}
+
+export function pointKindTone(kind: PointKind | number): string {
+  return POINT_KINDS[kind]?.tone ?? 'muted'
+}
+
+export function emailModeLabel(mode: EmailMode | number): string {
+  return t((['enum.emailMode.0', 'enum.emailMode.1', 'enum.emailMode.2'] as const)[mode] ?? 'common.unknown')
+}
+
+const PLUGIN_ACTIONS: Record<string, string> = {
+  'account.create': 'enum.pluginAction.account.create',
+  'session.issue': 'enum.pluginAction.session.issue',
+  'player.save': 'enum.pluginAction.player.save',
+  'player.delete': 'enum.pluginAction.player.delete',
+  'texture.upload': 'enum.pluginAction.texture.upload',
+  'account.check_in': 'enum.pluginAction.account.check_in',
+}
+
+export function pluginActionLabel(action: string): string {
+  const key = PLUGIN_ACTIONS[action]
+  return key ? t(key) : action
 }

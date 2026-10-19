@@ -8,15 +8,22 @@ import type {
   Account,
   Appearance,
   AuditEvent,
+  ExternalIdentity,
   ListResult,
   LoginResponse,
+  OAuthClient,
+  OAuthConsentInput,
+  OidcStart,
+  PluginInfo,
   Profile,
   Report,
   ReportResolution,
   SessionProfile,
+  SiteSettings,
   Texture,
   TextureState,
   TextureType,
+  Wallet,
 } from './types'
 import { PAGE_SIZE } from '../lib/paging'
 import { toDistributedPath } from '../lib/images'
@@ -61,6 +68,25 @@ export function requestPasswordReset(email: string): Promise<void> {
   return requestVoid('/api/auth/forgot-password', { method: 'POST', json: { email } })
 }
 
+export function startOidc(link: boolean, signal?: AbortSignal): Promise<OidcStart> {
+  return requestJson<OidcStart>(
+    link ? '/api/account/oidc/start' : '/api/auth/oidc/start',
+    { method: 'POST', signal },
+  )
+}
+
+export function completeOidc(
+  state: string,
+  code: string,
+  signal?: AbortSignal,
+): Promise<LoginResponse> {
+  return requestJson<LoginResponse>('/api/auth/oidc/complete', {
+    method: 'POST',
+    json: { state, code },
+    signal,
+  })
+}
+
 // ---------- 账号 ----------
 export function fetchAccount(signal?: AbortSignal): Promise<Account> {
   return requestJson<Account>('/api/account', { signal })
@@ -83,6 +109,82 @@ export function requestEmailVerification(): Promise<void> {
 
 export function deleteAccount(password: string): Promise<void> {
   return requestVoid('/api/account', { method: 'DELETE', json: { password } })
+}
+
+export function fetchExternalIdentities(signal?: AbortSignal): Promise<ExternalIdentity[]> {
+  return requestJson<ExternalIdentity[]>('/api/account/oidc', { signal })
+}
+
+export function removeExternalIdentity(id: string, password: string): Promise<void> {
+  return requestVoid(`/api/account/oidc/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    json: { password },
+  })
+}
+
+export function fetchAuthorizedApps(signal?: AbortSignal): Promise<OAuthClient[]> {
+  return requestJson<OAuthClient[]>('/api/account/oauth', { signal })
+}
+
+export function revokeAuthorizedApp(id: string): Promise<void> {
+  return requestVoid(`/api/account/oauth/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// ---------- 站点与积分 ----------
+export function fetchSite(signal?: AbortSignal): Promise<SiteSettings> {
+  return requestJson<SiteSettings>('/api/site', { signal })
+}
+
+export function saveSite(input: SiteSettings): Promise<void> {
+  return requestVoid('/api/admin/site', { method: 'PUT', json: input })
+}
+
+export function fetchWallet(signal?: AbortSignal): Promise<Wallet> {
+  return requestJson<Wallet>('/api/account/points', { signal })
+}
+
+export function signIn(signal?: AbortSignal): Promise<Wallet> {
+  return requestJson<Wallet>('/api/account/sign', { method: 'POST', signal })
+}
+
+// ---------- 本站 OAuth2 授权 ----------
+export function fetchOAuthClient(clientId: string, signal?: AbortSignal): Promise<OAuthClient> {
+  return requestJson<OAuthClient>(
+    `/api/oauth/client?client_id=${encodeURIComponent(clientId)}`,
+    { signal },
+  )
+}
+
+export function authorizeOAuth(input: OAuthConsentInput): Promise<{ redirect: string }> {
+  return requestJson<{ redirect: string }>('/api/oauth/authorize', {
+    method: 'POST',
+    json: input,
+  })
+}
+
+export function fetchOAuthClients(signal?: AbortSignal): Promise<OAuthClient[]> {
+  return requestJson<OAuthClient[]>('/api/admin/oauth/clients', { signal })
+}
+
+export function createOAuthClient(name: string, redirectUri: string): Promise<OAuthClient> {
+  return requestJson<OAuthClient>('/api/admin/oauth/clients', {
+    method: 'POST',
+    json: { name, redirectUri },
+  })
+}
+
+export function deleteOAuthClient(id: string): Promise<void> {
+  return requestVoid(`/api/admin/oauth/clients/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// ---------- 插件 ----------
+export function fetchPlugins(signal?: AbortSignal): Promise<PluginInfo[]> {
+  return requestJson<PluginInfo[]>('/api/admin/plugins', { signal })
+}
+
+/** 插件 ID 与单段路径都由服务端约束，前端只拼接已登记的值。 */
+export function queryPlugin(id: string, path: string, signal?: AbortSignal): Promise<unknown> {
+  return requestJson<unknown>(`/api/plugins/${encodeURIComponent(id)}${path}`, { signal })
 }
 
 // ---------- 角色 ----------

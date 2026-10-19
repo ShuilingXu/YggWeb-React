@@ -1,19 +1,21 @@
 import type { ReactNode } from 'react'
 import { t } from '../i18n/zh-CN'
-import { href } from '../lib/router'
+import { currentPath, href, pathWithQuery } from '../lib/router'
 import { useAuth } from './AuthProvider'
-import { ErrorState, LoadingState, Notice } from './ui'
+import { ErrorState, LoadingState, Notice } from './UI'
 
 function GuardNotice({ title, children }: { title: string; children?: ReactNode }) {
+  const login = pathWithQuery('/auth/login', { next: currentPath() })
+  const register = pathWithQuery('/auth/register', { next: currentPath() })
   return (
     <div className="container">
       <div className="page page--narrow">
         <Notice tone="warn">{title}</Notice>
         <div className="row">
-          <a className="mc-btn mc-btn--primary" href={href('/auth/login')}>
+          <a className="mc-btn mc-btn--primary" href={href(login)}>
             {t('nav.login')}
           </a>
-          <a className="mc-btn" href={href('/auth/register')}>
+          <a className="mc-btn" href={href(register)}>
             {t('nav.register')}
           </a>
         </div>

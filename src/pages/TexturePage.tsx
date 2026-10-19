@@ -19,6 +19,7 @@ import {
 } from '../api/resources'
 import type { Texture, TextureType } from '../api/types'
 import { useAuth } from '../components/AuthProvider'
+import { useSite } from '../components/SiteProvider'
 import { CharacterViewer } from '../components/CharacterViewer'
 import { TextureImage } from '../components/TextureImage'
 import { ClosetNameDialog, WearDialog } from '../components/TextureDialogs'
@@ -31,7 +32,7 @@ import {
   Notice,
   Skeleton,
   useToast,
-} from '../components/ui'
+} from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import { formatBytes, formatDateTime, shortId } from '../lib/format'
 import {
@@ -53,6 +54,7 @@ function currentSource(source: MediaSource, texture: Texture): string | null {
 
 export function TexturePage({ uuid }: { uuid: string }) {
   const auth = useAuth()
+  const site = useSite()
   const { notify } = useToast()
   const [dialog, setDialog] = useState<DialogKind>(null)
 
@@ -174,6 +176,10 @@ export function TexturePage({ uuid }: { uuid: string }) {
 
   const data = texture.data
   const playerList = players.data ?? []
+  const privacyCost = site.site
+    ? Math.ceil(data.sizeBytes / 1024) *
+      Math.max(0, site.site.privateUploadCost - site.site.uploadCost)
+    : 0
 
   return (
     <div className="container">
@@ -322,6 +328,7 @@ export function TexturePage({ uuid }: { uuid: string }) {
           textureId={data.id}
           initialName={data.name}
           title={t('texture.closet.title')}
+          cost={site.site?.closetCost}
           onClose={() => setDialog(null)}
           onDone={() => {
             setDialog(null)
@@ -356,6 +363,7 @@ export function TexturePage({ uuid }: { uuid: string }) {
       {dialog === 'edit' ? (
         <EditDialog
           texture={data}
+          privacyCost={privacyCost}
           onClose={() => setDialog(null)}
           onDone={() => {
             setDialog(null)
@@ -477,10 +485,12 @@ function ReportDialog({
 
 function EditDialog({
   texture,
+  privacyCost,
   onClose,
   onDone,
 }: {
   texture: Texture
+  privacyCost: number
   onClose: () => void
   onDone: () => void
 }) {
@@ -545,6 +555,9 @@ function EditDialog({
         />
         {t('texture.edit.public')}
       </label>
+      {texture.public === 1 && !isPublic && privacyCost > 0 ? (
+        <p className="small dim">{t('texture.edit.privacyCost', { cost: privacyCost })}</p>
+      ) : null}
       {submit.error ? <span className="field__error">{submit.error}</span> : null}
     </Dialog>
   )

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { t } from '../i18n/zh-CN'
-import { Button } from './ui'
+import { Button } from './UI'
 
 const SkinViewer = lazy(() => import('./SkinViewer'))
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ACCOUNT_STATE,
   PERMISSION,
+  POINT_KIND,
   REPORT_STATE,
   TEXTURE_STATE,
   TEXTURE_TYPE,
@@ -11,6 +12,9 @@ import {
   auditResultLabel,
   permissionLabel,
   permissionTone,
+  pluginActionLabel,
+  pointKindLabel,
+  pointKindTone,
   reportStateTone,
   textureStateTone,
   textureTypeLabel,
@@ -49,7 +53,16 @@ describe('状态与权限映射', () => {
     expect(reportStateTone(REPORT_STATE.PENDING)).toBe('warn')
     expect(reportStateTone(REPORT_STATE.RESOLVED)).toBe('ok')
     expect(auditActionLabel(3)).toBe('举报处理')
+    expect(auditActionLabel(7)).toBe('外部身份解绑')
     expect(auditResultLabel(-1)).toBe('未改动')
     expect(auditResultLabel(1)).toBe('已驳回')
+  })
+
+  it('积分来源与插件动作标签', () => {
+    expect(pointKindLabel(POINT_KIND.SIGN)).toBe('签到')
+    expect(pointKindLabel(POINT_KIND.PRIVACY)).toBe('转私有补差价')
+    expect(pointKindTone(POINT_KIND.PRIVACY)).toBe('warn')
+    expect(pluginActionLabel('texture.upload')).toBe('材质上传')
+    expect(pluginActionLabel('unknown.action')).toBe('unknown.action')
   })
 })

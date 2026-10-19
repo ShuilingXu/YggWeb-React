@@ -45,12 +45,15 @@ export function setSessionLostHandler(handler: (() => void) | null): void {
 export class ApiError extends Error {
   readonly status: number
   readonly retryAfter: number
+  /** 后端错误体的固定 error 标识，仅用于映射文案，不直接展示。 */
+  readonly code: string | null
 
-  constructor(status: number, message: string, retryAfter = 0) {
+  constructor(status: number, message: string, retryAfter = 0, code: string | null = null) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.retryAfter = retryAfter
+    this.code = code
   }
 }
 
@@ -97,6 +100,21 @@ async function accountStillValid(): Promise<boolean> {
   }
 }
 
+const ERROR_CODES: Record<string, string> = {
+  InsufficientPoints: t('error.insufficientPoints'),
+  AlreadySigned: t('error.alreadySigned'),
+  PluginDenied: t('error.pluginDenied'),
+}
+
+async function readErrorCode(response: Response): Promise<string | null> {
+  try {
+    const body = (await response.clone().json()) as { error?: unknown }
+    return typeof body.error === 'string' ? body.error : null
+  } catch {
+    return null
+  }
+}
+
 async function fail(response: Response, path: string): Promise<never> {
   const status = response.status
   const retryAfter = Number(response.headers.get('Retry-After') ?? 0) || 0
@@ -108,17 +126,20 @@ async function fail(response: Response, path: string): Promise<never> {
     dropSession()
     throw new ApiError(status, t('error.sessionExpired'), retryAfter)
   }
+  const code = await readErrorCode(response)
   const fallback = status >= 500 ? t('error.500') : t('error.400')
   let message =
     status === 429 && retryAfter > 0
       ? t('error.rateLimited', { seconds: retryAfter })
       : (STATUS_MESSAGES[status] ?? fallback)
-  // 403 在这些端点表示"凭证不正确"，与权限不足区分开。
-  if (status === 403) {
+  if (code && ERROR_CODES[code]) {
+    message = ERROR_CODES[code]
+  } else if (status === 403) {
+    // 403 在这些端点表示"凭证不正确"，与权限不足区分开。
     if (path === '/api/auth/login') message = t('auth.invalidCredentials')
     else if (path.startsWith('/api/account')) message = t('account.wrongPassword')
   }
-  throw new ApiError(status, message, retryAfter)
+  throw new ApiError(status, message, retryAfter, code)
 }
 
 async function raw(path: string, options: RequestOptions = {}): Promise<Response> {

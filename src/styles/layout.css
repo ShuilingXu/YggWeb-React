@@ -169,6 +169,11 @@
   display: flex;
 }
 
+/* 站点公告与配置加载失败提示：与页面同宽，紧贴顶栏下方。 */
+.announcement-bar {
+  padding-top: var(--sp-4);
+}
+
 /* ---------- 页面骨架 ---------- */
 .page {
   display: flex;

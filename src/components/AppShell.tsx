@@ -3,6 +3,7 @@ import { t } from '../i18n/zh-CN'
 import { href, navigate, type Route } from '../lib/router'
 import { useTheme } from '../lib/theme'
 import { useAuth } from './AuthProvider'
+import { useSite } from './SiteProvider'
 import {
   IconAccount,
   IconAdmin,
@@ -13,10 +14,11 @@ import {
   IconMenu,
   IconMoon,
   IconPlayer,
+  IconPoints,
   IconSun,
   IconUpload,
-} from './icons'
-import { Button, CopyButton, Spinner, buttonClass, useToast } from './ui'
+} from './Icons'
+import { Button, CopyButton, Notice, Spinner, buttonClass, useToast } from './UI'
 
 type NavItem = {
   path: string
@@ -27,6 +29,7 @@ type NavItem = {
 
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
   const auth = useAuth()
+  const site = useSite()
   const { theme, toggle } = useTheme()
   const { notify } = useToast()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -34,6 +37,10 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
   useEffect(() => {
     setMenuOpen(false)
   }, [route])
+
+  useEffect(() => {
+    document.title = `${site.site?.name?.trim() || t('site.name')} · ${t('site.tagline')}`
+  }, [site.site?.name])
 
   const items = useMemo<NavItem[]>(() => {
     const list: NavItem[] = [
@@ -69,6 +76,12 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           label: t('nav.players'),
           icon: <IconPlayer />,
           active: (current) => current.name === 'players',
+        },
+        {
+          path: '/points',
+          label: t('nav.points'),
+          icon: <IconPoints />,
+          active: (current) => current.name === 'points',
         },
         {
           path: '/account',
@@ -121,7 +134,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         <div className="container topbar__inner">
           <a className="brand" href={href('/')}>
             <span className="brand__logo" aria-hidden="true" />
-            <span className="brand__name">{t('site.name')}</span>
+            <span className="brand__name">{site.site?.name?.trim() || t('site.name')}</span>
             <span className="brand__tag hide-sm">{t('site.tag')}</span>
           </a>
           <nav className="nav hide-sm" aria-label={t('nav.home')}>
@@ -176,6 +189,26 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           <div className="row">{authActions}</div>
         </div>
       </header>
+
+      {site.site?.announcement.trim() ? (
+        <div className="container announcement-bar">
+          <Notice>
+            <span className="pre-wrap">{site.site.announcement}</span>
+          </Notice>
+        </div>
+      ) : null}
+      {site.error ? (
+        <div className="container announcement-bar">
+          <Notice tone="warn">
+            <span className="row row--between">
+              <span>{t('site.loadFailed')}</span>
+              <Button size="sm" onClick={site.reload}>
+                {t('common.retry')}
+              </Button>
+            </span>
+          </Notice>
+        </div>
+      ) : null}
 
       <main className="shell__main">{children}</main>
 

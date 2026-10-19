@@ -3,7 +3,7 @@ import type { Texture } from '../api/types'
 import { t } from '../i18n/zh-CN'
 import { href } from '../lib/router'
 import { TextureImage } from './TextureImage'
-import { Badge } from './ui'
+import { Badge } from './UI'
 
 export function TextureCard({ texture }: { texture: Texture }) {
   return (

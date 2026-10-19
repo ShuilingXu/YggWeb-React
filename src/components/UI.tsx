@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { t } from '../i18n/zh-CN'
 import { pageCount } from '../lib/paging'
-import { IconWarning } from './icons'
+import { IconWarning } from './Icons'
 
 type ButtonVariant = 'default' | 'primary' | 'grass' | 'gold' | 'danger' | 'ghost'
 

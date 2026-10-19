@@ -5,9 +5,11 @@ export type AccountState = 0 | 1 | 2
 export type Permission = 0 | 1 | 2
 export type ReportState = 0 | 1 | 2
 export type ReportResolution = 1 | 2
-export type AuditAction = 0 | 1 | 2 | 3
+export type AuditAction = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 export type AuditResult = -1 | 0 | 1
 export type PublicFlag = 0 | 1
+export type EmailMode = 0 | 1 | 2
+export type PointKind = 0 | 1 | 2 | 3 | 4 | 5
 
 export type Profile = {
   /** 32 位无横线 UUID */
@@ -91,4 +93,85 @@ export type ListMeta = {
 export type ListResult<T> = {
   items: T[]
   meta: ListMeta
+}
+
+// 站点公开配置：GET /api/site，字段与 internal/site.Settings 一致。
+export type SiteSettings = {
+  name: string
+  description: string
+  announcement: string
+  registration: PublicFlag
+  emailMode: EmailMode
+  emailDomains: string
+  skinDomains: string
+  maxPlayers: number
+  singleSession: PublicFlag
+  signEnabled: PublicFlag
+  signHours: number
+  signMin: number
+  signMax: number
+  initialPoints: number
+  playerCost: number
+  uploadCost: number
+  privateUploadCost: number
+  closetCost: number
+  oauthEnabled: PublicFlag
+  oidcEnabled: PublicFlag
+  oidcIssuer: string
+  oidcClientId: string
+  oidcName: string
+}
+
+export type PointEntry = {
+  id: number
+  delta: number
+  kind: PointKind
+  createdAt: string
+}
+
+export type Wallet = {
+  balance: number
+  nextSignAt: string | null
+  entries: PointEntry[]
+}
+
+export type OAuthClient = {
+  id: string
+  name: string
+  redirectUri: string
+}
+
+export type OAuthConsentInput = {
+  client_id: string
+  redirect_uri: string
+  response_type: string
+  scope: string
+  state: string
+  code_challenge: string
+  code_challenge_method: string
+  approve: boolean
+}
+
+export type ExternalIdentity = {
+  id: string
+  issuer: string
+  createdAt: string
+}
+
+export type OidcStart = {
+  url: string
+  state: string
+}
+
+// internal/httpserver/plugins.go 与 plugin.Info 的公开字段。
+export type PluginInfo = {
+  id: string
+  version: string
+  apiVersion: number
+  description: string
+  enabled: PublicFlag
+  actions: string[]
+  before: boolean
+  after: boolean
+  endpoints: string[]
 }

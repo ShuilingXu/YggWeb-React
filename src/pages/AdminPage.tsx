@@ -24,6 +24,7 @@ import {
   updateUser,
 } from '../api/resources'
 import type { Account, Report } from '../api/types'
+import { AdminSitePanel } from './AdminSitePanel'
 import { useAuth } from '../components/AuthProvider'
 import {
   Badge,
@@ -35,13 +36,21 @@ import {
   Notice,
   Tabs,
   useToast,
-} from '../components/ui'
+} from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import { formatDate, formatDateTime, shortId } from '../lib/format'
 import { href, navigate, type AdminTab } from '../lib/router'
 import { useAsync, useSubmit } from '../lib/useAsync'
 
 export function AdminPage({ tab }: { tab: AdminTab }) {
+  const auth = useAuth()
+  const tabs = [
+    { value: 'users' as const, label: t('admin.tab.users') },
+    { value: 'reports' as const, label: t('admin.tab.reports') },
+    { value: 'audit' as const, label: t('admin.tab.audit') },
+    ...(auth.isOwner ? [{ value: 'site' as const, label: t('admin.tab.site') }] : []),
+  ]
+
   return (
     <div className="container">
       <div className="page">
@@ -55,13 +64,17 @@ export function AdminPage({ tab }: { tab: AdminTab }) {
           label={t('admin.title')}
           value={tab}
           onChange={(value) => navigate(`/admin/${value}`, { replace: true })}
-          tabs={[
-            { value: 'users', label: t('admin.tab.users') },
-            { value: 'reports', label: t('admin.tab.reports') },
-            { value: 'audit', label: t('admin.tab.audit') },
-          ]}
+          tabs={tabs}
         />
-        {tab === 'users' ? <UsersPanel /> : tab === 'reports' ? <ReportsPanel /> : <AuditPanel />}
+        {tab === 'users' ? (
+          <UsersPanel />
+        ) : tab === 'reports' ? (
+          <ReportsPanel />
+        ) : tab === 'audit' ? (
+          <AuditPanel />
+        ) : (
+          <AdminSitePanel />
+        )}
       </div>
     </div>
   )

@@ -15,7 +15,7 @@ import {
   Pagination,
   Skeleton,
   useToast,
-} from '../components/ui'
+} from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import { PAGE_SIZE } from '../lib/paging'
 import { readOffset, readSearch, readType } from '../lib/query'

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  emailDomainAllowed,
   isValidEmail,
+  isValidOidcIssuer,
   isValidPassword,
   isValidPlayerName,
+  isValidRedirectUri,
   passwordByteLength,
   textureDimensionProblem,
 } from './validate'
@@ -52,11 +55,33 @@ describe('账号字段校验', () => {
     expect(isValidEmail('owner example.com')).toBe(false)
   })
 
-  it('密码按字节计 8–32 位', () => {
+  it('密码按字节计 8–72 位', () => {
     expect(isValidPassword('1234567')).toBe(false)
     expect(isValidPassword('12345678')).toBe(true)
-    expect(isValidPassword('a'.repeat(33))).toBe(false)
+    expect(isValidPassword('a'.repeat(72))).toBe(true)
+    expect(isValidPassword('a'.repeat(73))).toBe(false)
     // 一个中文字符占 3 字节，4 个中文即 12 字节
     expect(passwordByteLength('密码密码')).toBe(12)
+  })
+
+  it('邮箱域名白名单/黑名单精确匹配且不区分大小写', () => {
+    expect(emailDomainAllowed('a@example.com', 0, '')).toBe(true)
+    expect(emailDomainAllowed('a@Example.com', 1, 'example.com other.com')).toBe(true)
+    expect(emailDomainAllowed('a@sub.example.com', 1, 'example.com')).toBe(false)
+    expect(emailDomainAllowed('a@example.com', 2, 'example.com')).toBe(false)
+    expect(emailDomainAllowed('a@other.com', 2, 'example.com')).toBe(true)
+  })
+
+  it('OAuth 回调与 OIDC issuer 只允许 HTTPS 或 loopback HTTP', () => {
+    expect(isValidRedirectUri('https://app.example.com/cb')).toBe(true)
+    expect(isValidRedirectUri('http://127.0.0.1:8080/cb')).toBe(true)
+    expect(isValidRedirectUri('http://localhost/cb')).toBe(true)
+    expect(isValidRedirectUri('http://example.com/cb')).toBe(false)
+    expect(isValidRedirectUri('https://app.example.com/cb#x')).toBe(false)
+
+    expect(isValidOidcIssuer('https://id.example.com')).toBe(true)
+    expect(isValidOidcIssuer('http://127.0.0.1:9000')).toBe(true)
+    expect(isValidOidcIssuer('http://id.example.com')).toBe(false)
+    expect(isValidOidcIssuer('https://id.example.com/?x=1')).toBe(false)
   })
 })

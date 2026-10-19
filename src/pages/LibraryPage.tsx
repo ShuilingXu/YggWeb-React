@@ -10,7 +10,7 @@ import {
   Pagination,
   Skeleton,
   Tabs,
-} from '../components/ui'
+} from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import { PAGE_SIZE } from '../lib/paging'
 import { readOffset, readSearch, readSort, readType } from '../lib/query'

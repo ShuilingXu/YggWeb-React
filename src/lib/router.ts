@@ -1,7 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import { queryString } from './paging'
 
-export type AdminTab = 'users' | 'reports' | 'audit'
+export type AdminTab = 'users' | 'reports' | 'audit' | 'site'
 
 type PlainRouteName =
   | 'home'
@@ -9,6 +9,7 @@ type PlainRouteName =
   | 'upload'
   | 'closet'
   | 'players'
+  | 'points'
   | 'account'
   | 'login'
   | 'register'
@@ -18,9 +19,11 @@ type PlainRouteName =
 export type Route =
   | { name: 'texture'; uuid: string; query: URLSearchParams }
   | { name: 'admin'; tab: AdminTab; query: URLSearchParams }
+  | { name: 'oauthAuthorize'; query: URLSearchParams }
+  | { name: 'oidcCallback'; query: URLSearchParams }
   | { name: PlainRouteName; query: URLSearchParams }
 
-const ADMIN_TABS: AdminTab[] = ['users', 'reports', 'audit']
+const ADMIN_TABS: AdminTab[] = ['users', 'reports', 'audit', 'site']
 
 /** hash 路由：后端 `/web/` 是纯 FileServer，没有 SPA 回落。 */
 export function parseRoute(hash: string): Route {
@@ -39,7 +42,14 @@ export function parseRoute(hash: string): Route {
   if (first === 'upload' && segments.length === 1) return { name: 'upload', query }
   if (first === 'closet' && segments.length === 1) return { name: 'closet', query }
   if (first === 'players' && segments.length === 1) return { name: 'players', query }
+  if (first === 'points' && segments.length === 1) return { name: 'points', query }
   if (first === 'account' && segments.length === 1) return { name: 'account', query }
+  if (first === 'oauth' && segments[1] === 'authorize' && segments.length === 2) {
+    return { name: 'oauthAuthorize', query }
+  }
+  if (first === 'oidc' && segments[1] === 'callback' && segments.length === 2) {
+    return { name: 'oidcCallback', query }
+  }
   if (first === 'admin' && segments.length <= 2) {
     const tab = segments[1]
     return {
@@ -88,6 +98,21 @@ export function pathWithQuery(path: string, params: Record<string, string | numb
 
 export function href(path: string): string {
   return `#${path.startsWith('/') ? path : `/${path}`}`
+}
+
+/** 当前 hash 的路径 + 查询，用于登录后回到原页面。 */
+export function currentPath(): string {
+  if (typeof window === 'undefined') return '/'
+  const hash = window.location.hash.replace(/^#/, '')
+  return hash || '/'
+}
+
+/** 只接受站内 hash 路径，避免把 next 变成外部跳转。 */
+export function readNext(query: URLSearchParams): string | null {
+  const value = query.get('next')
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return null
+  if (value.startsWith('/auth/')) return null
+  return value
 }
 
 function currentHash(): string {

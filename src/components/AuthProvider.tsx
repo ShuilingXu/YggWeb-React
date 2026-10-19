@@ -17,7 +17,7 @@ import {
 import type { Account } from '../api/types'
 import { t } from '../i18n/zh-CN'
 import { clearAuthenticatedImages } from '../lib/images'
-import { useToast } from './ui'
+import { useToast } from './UI'
 
 type AuthValue = {
   account: Account | null
@@ -27,6 +27,8 @@ type AuthValue = {
   isAdmin: boolean
   isOwner: boolean
   login: (username: string, password: string) => Promise<void>
+  /** OIDC 回调已拿到 accessToken，直接换成当前账号，不再重复登录。 */
+  loginWithToken: (accessToken: string) => Promise<void>
   logout: () => Promise<void>
   /** 改密/改邮箱/注销后服务端已撤销令牌，只清理本地状态即可 */
   endSession: () => void
@@ -72,17 +74,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setSessionLostHandler(null)
   }, [clear, notify])
 
-  const login = useCallback(async (username: string, password: string) => {
-    const response = await loginRequest(username, password)
+  const loginWithToken = useCallback(async (accessToken: string) => {
     clearAuthenticatedImages()
-    setToken(response.accessToken)
+    setToken(accessToken)
     try {
       setAccount(await fetchAccount())
     } catch (error) {
       setToken(null)
+      setAccount(null)
       throw error
     }
   }, [])
+
+  const login = useCallback(
+    async (username: string, password: string) => {
+      const response = await loginRequest(username, password)
+      await loginWithToken(response.accessToken)
+    },
+    [loginWithToken],
+  )
 
   const logout = useCallback(async () => {
     try {
@@ -107,11 +117,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: permission >= PERMISSION.ADMIN,
       isOwner: permission >= PERMISSION.OWNER,
       login,
+      loginWithToken,
       logout,
       endSession: clear,
       refreshAccount,
     }
-  }, [account, restoring, login, logout, clear, refreshAccount])
+  }, [account, restoring, login, loginWithToken, logout, clear, refreshAccount])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

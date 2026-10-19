@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { AppShell } from './components/AppShell'
 import { RequireAdmin, RequireAuth } from './components/AuthGuard'
 import { useAuth } from './components/AuthProvider'
-import { EmptyState, LoadingState } from './components/ui'
+import { EmptyState, LoadingState } from './components/UI'
 import { t } from './i18n/zh-CN'
 import { href, useRoute, type Route } from './lib/router'
 import { AccountPage } from './pages/AccountPage'
@@ -11,7 +11,10 @@ import { ForgotPage, LoginPage, RegisterPage } from './pages/AuthPage'
 import { ClosetPage } from './pages/ClosetPage'
 import { HomePage } from './pages/HomePage'
 import { LibraryPage } from './pages/LibraryPage'
+import { OAuthConsentPage } from './pages/OAuthConsentPage'
+import { OidcCallbackPage } from './pages/OidcCallbackPage'
 import { PlayersPage } from './pages/PlayersPage'
+import { PointsPage } from './pages/PointsPage'
 import { TexturePage } from './pages/TexturePage'
 import { UploadPage } from './pages/UploadPage'
 
@@ -41,6 +44,20 @@ function RouteView({ route }: { route: Route }) {
           <PlayersPage />
         </RequireAuth>
       )
+    case 'points':
+      return (
+        <RequireAuth>
+          <PointsPage />
+        </RequireAuth>
+      )
+    case 'oauthAuthorize':
+      return (
+        <RequireAuth>
+          <OAuthConsentPage />
+        </RequireAuth>
+      )
+    case 'oidcCallback':
+      return <OidcCallbackPage />
     case 'account':
       return (
         <RequireAuth>

@@ -1,11 +1,26 @@
 import { useEffect, useState } from 'react'
 import { requestPasswordReset, register } from '../api/resources'
 import { useAuth } from '../components/AuthProvider'
-import { Button, Field, Notice, useToast } from '../components/ui'
+import { useSite } from '../components/SiteProvider'
+import { Button, Field, Notice, useToast } from '../components/UI'
 import { t } from '../i18n/zh-CN'
-import { href, navigate } from '../lib/router'
+import { beginOidc } from '../lib/oidc'
+import { href, navigate, pathWithQuery, readNext, useRoute } from '../lib/router'
 import { useSubmit } from '../lib/useAsync'
-import { isValidEmail, isValidPassword, isValidPlayerName } from '../lib/validate'
+import {
+  emailDomainAllowed,
+  isValidEmail,
+  isValidPassword,
+  isValidPlayerName,
+} from '../lib/validate'
+
+function loginHref(next: string | null): string {
+  return href(pathWithQuery('/auth/login', { next }))
+}
+
+function registerHref(next: string | null): string {
+  return href(pathWithQuery('/auth/register', { next }))
+}
 
 function AuthPanel({
   title,
@@ -39,21 +54,25 @@ function AuthPanel({
 
 export function LoginPage() {
   const auth = useAuth()
+  const site = useSite()
+  const route = useRoute()
   const { notify } = useToast()
+  const next = readNext(route.query)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const submit = useSubmit()
+  const oidc = useSubmit()
 
   useEffect(() => {
-    if (auth.loggedIn) navigate('/', { replace: true })
-  }, [auth.loggedIn])
+    if (auth.loggedIn) navigate(next ?? '/', { replace: true })
+  }, [auth.loggedIn, next])
 
   return (
     <AuthPanel
       title={t('auth.login')}
       footer={
         <>
-          <a href={href('/auth/register')}>{t('auth.toRegister')}</a>
+          <a href={registerHref(next)}>{t('auth.toRegister')}</a>
           <a href={href('/auth/forgot')}>{t('auth.forgot')}</a>
         </>
       }
@@ -66,7 +85,7 @@ export function LoginPage() {
           void submit.run(async () => {
             await auth.login(identifier.trim(), password)
             notify('ok', t('auth.loginSuccess'))
-            navigate('/', { replace: true })
+            navigate(next ?? '/', { replace: true })
           })
         }}
       >
@@ -90,26 +109,56 @@ export function LoginPage() {
           />
         </Field>
         {submit.error ? <Notice tone="danger">{submit.error}</Notice> : null}
-        <Button type="submit" variant="primary" block disabled={submit.busy}>
+        <Button type="submit" variant="primary" block disabled={submit.busy || oidc.busy}>
           {submit.busy ? t('common.submitting') : t('auth.submitLogin')}
         </Button>
       </form>
+      {site.site?.oidcEnabled === 1 ? (
+        <>
+          <div className="divider" />
+          <Button
+            block
+            disabled={submit.busy || oidc.busy}
+            onClick={() => void oidc.run(() => beginOidc(false))}
+          >
+            {oidc.busy
+              ? t('common.submitting')
+              : t('auth.oidcLogin', { name: site.site.oidcName || t('auth.oidcFallback') })}
+          </Button>
+          {oidc.error ? <Notice tone="danger">{oidc.error}</Notice> : null}
+          <p className="small dim">{t('auth.oidcHint')}</p>
+        </>
+      ) : null}
     </AuthPanel>
   )
 }
 
 export function RegisterPage() {
+  const site = useSite()
+  const route = useRoute()
   const { notify } = useToast()
+  const next = readNext(route.query)
   const [email, setEmail] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errors, setErrors] = useState<{ email?: string; playerName?: string; password?: string }>({})
   const submit = useSubmit()
+  const closed = site.site?.registration === 0
+  const policy = site.site
+  const emailPolicy =
+    policy && policy.emailMode !== 0
+      ? t(policy.emailMode === 1 ? 'auth.emailAllowHint' : 'auth.emailDenyHint', {
+          domains: policy.emailDomains,
+        })
+      : null
 
   function validate(): boolean {
     const next: typeof errors = {}
     if (!isValidEmail(email.trim())) next.email = t('auth.emailInvalid')
+    else if (policy && !emailDomainAllowed(email.trim(), policy.emailMode, policy.emailDomains)) {
+      next.email = t('auth.emailDomainDenied')
+    }
     if (!isValidPlayerName(playerName.trim())) next.playerName = t('players.nameRequired')
     if (!isValidPassword(password)) next.password = t('account.passwordLength')
     else if (password !== confirm) next.password = t('account.passwordMismatch')
@@ -123,20 +172,22 @@ export function RegisterPage() {
       description={t('auth.registerHint')}
       footer={
         <>
-          <a href={href('/auth/login')}>{t('auth.toLogin')}</a>
+          <a href={loginHref(next)}>{t('auth.toLogin')}</a>
           <a href={href('/auth/forgot')}>{t('auth.forgot')}</a>
         </>
       }
     >
+      {closed ? <Notice tone="warn">{t('auth.registrationClosed')}</Notice> : null}
+      {emailPolicy ? <p className="small dim">{emailPolicy}</p> : null}
       <form
         className="auth__form"
         onSubmit={(event) => {
           event.preventDefault()
-          if (!validate()) return
+          if (closed || !validate()) return
           void submit.run(async () => {
             await register(email.trim(), password, playerName.trim())
             notify('ok', t('auth.registerSuccess'))
-            navigate('/auth/login')
+            navigate(pathWithQuery('/auth/login', { next }))
           })
         }}
       >
@@ -186,7 +237,7 @@ export function RegisterPage() {
           />
         </Field>
         {submit.error ? <Notice tone="danger">{submit.error}</Notice> : null}
-        <Button type="submit" variant="primary" block disabled={submit.busy}>
+        <Button type="submit" variant="primary" block disabled={closed || submit.busy}>
           {submit.busy ? t('common.submitting') : t('auth.submitRegister')}
         </Button>
       </form>
@@ -195,6 +246,8 @@ export function RegisterPage() {
 }
 
 export function ForgotPage() {
+  const route = useRoute()
+  const next = readNext(route.query)
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -204,7 +257,7 @@ export function ForgotPage() {
     <AuthPanel
       title={t('auth.forgotTitle')}
       description={t('auth.forgotDesc')}
-      footer={<a href={href('/auth/login')}>{t('auth.toLogin')}</a>}
+      footer={<a href={loginHref(next)}>{t('auth.toLogin')}</a>}
     >
       {sent ? (
         <Notice>{t('auth.forgotSent')}</Notice>

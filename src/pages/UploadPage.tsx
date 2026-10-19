@@ -3,7 +3,8 @@ import { TEXTURE_TYPE, textureTypeLabel } from '../api/enums'
 import { uploadTexture } from '../api/resources'
 import type { TextureType } from '../api/types'
 import { useAuth } from '../components/AuthProvider'
-import { Button, Field, Notice, useToast } from '../components/ui'
+import { useSite } from '../components/SiteProvider'
+import { Button, Field, Notice, useToast } from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import { formatBytes } from '../lib/format'
 import { navigate } from '../lib/router'
@@ -14,6 +15,7 @@ const MAX_INPUT_BYTES = 16 * 1024 * 1024
 
 export function UploadPage() {
   const auth = useAuth()
+  const site = useSite()
   const { notify } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -105,6 +107,16 @@ export function UploadPage() {
             <p className="page__sub">{t('upload.sub')}</p>
           </div>
         </div>
+
+        {site.site ? (
+          <Notice>
+            {t('upload.costNotice', {
+              public: site.site.uploadCost,
+              private: site.site.privateUploadCost,
+              closet: site.site.closetCost,
+            })}
+          </Notice>
+        ) : null}
 
         <form
           onSubmit={(event) => {

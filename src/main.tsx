@@ -2,7 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { AuthProvider } from './components/AuthProvider'
-import { ToastProvider } from './components/ui'
+import { SiteProvider } from './components/SiteProvider'
+import { ToastProvider } from './components/UI'
 import './styles/tokens.css'
 import './styles/components.css'
 import './styles/layout.css'
@@ -14,7 +15,9 @@ createRoot(root).render(
   <StrictMode>
     <ToastProvider>
       <AuthProvider>
-        <App />
+        <SiteProvider>
+          <App />
+        </SiteProvider>
       </AuthProvider>
     </ToastProvider>
   </StrictMode>,

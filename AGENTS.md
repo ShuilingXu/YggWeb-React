@@ -34,10 +34,10 @@
 - 不写 `XxxNew`/`XxxV2` 之类平行实现；列表的筛选/排序/分页状态统一进 URL。
 
 ### 1.3 先复用后新增（改动前必做）
-- 组件 `src/components/`：`ui.tsx`（Button/Field/Dialog/Toast/Tabs/Badge/Pagination/Skeleton/EmptyState/ErrorState）、`TextureImage`、`TextureCard`、`AppShell`、`icons`、`SkinViewer`。
+- 组件 `src/components/`：`UI.tsx`（Button/Field/Dialog/Toast/Tabs/Badge/Pagination/Skeleton/EmptyState/ErrorState）、`TextureImage`、`TextureCard`、`AppShell`、`AuthProvider`、`SiteProvider`（公开站点规则）、`Icons.tsx`、`SkinViewer`。
 - 样式：`src/styles/tokens.css` 的 token；`components.css` 的既有类。
 - 接口：`src/api/resources.ts`；错误映射在 `client.ts`；类型/枚举在 `types.ts`/`enums.ts`。
-- 文案：`src/i18n/zh-CN.ts`。纯函数：`src/lib/`（format/validate/paging/router/theme/useAsync）。
+- 文案：`src/i18n/zh-CN.ts`。纯函数：`src/lib/`（format/validate/paging/router/theme/useAsync/oauth/oidc）。
 
 ### 1.4 注释
 只写"为什么"和看不出来的约束（后端怪癖、协议差异），简体中文；不写文件名横幅、不写同义注释、不留注释掉的代码与空 TODO。
@@ -92,8 +92,14 @@
 | 账号 `permission` | `0` 普通 / `1` 管理员 / `2` 站点所有者 |
 | 举报 `state` | `0` 待处理 / `1` 已处理 / `2` 已驳回 |
 | 举报 `resolution` | `1` 下架处理 / `2` 驳回 |
+| 审计 `action` | `0` 用户管理 / `1` 所有者授权 / `2` 材质状态 / `3` 举报处理 / `4` 站点配置 / `5` OAuth 应用 / `6` 外部绑定 / `7` 外部解绑 |
+| 审计 `result` | `-1` 未改动 / `0` 已执行 / `1` 已驳回 |
+| 积分 `kind` | `0` 初始 / `1` 签到 / `2` 新增角色 / `3` 上传 / `4` 收藏 / `5` 转私有补差价 |
+| 邮箱 `emailMode` | `0` 不限制 / `1` 白名单 / `2` 黑名单 |
+| 插件 `actions` | 协议字符串：`account.create`、`session.issue`、`player.save`、`player.delete`、`texture.upload`、`account.check_in` |
 
-用 `as const` 对象 + 联合类型，不用 TS `enum`。
+用 `as const` 对象 + 联合类型，不用 TS `enum`。错误体里的 `error` 标识
+`InsufficientPoints` / `AlreadySigned` / `PluginDenied` 只在 `client.ts` 映射一次。
 
 ### 3.5 材质图片与 3D
 - 预览 `/api/textures/{id}/preview?size=16..512`；头像 `.../avatar`（**披风没有头像，返回 400**）。
@@ -149,15 +155,15 @@ npm run build       # tsc --noEmit && vite build
 - 产物由后端 `YGG_WEB_DIR` 托管在 `/web/`；`vite.config.ts` 的 `base` 必须是 `/web/`。
 - **API 一律绝对路径**（`/api/...`、`/textures/...`），否则在 `/web/` 下会拼错。
 - 后端 `GET /web/` 是纯 `FileServer`，没有 SPA 回落 → 路由用 hash。换 History 路由必须先让后端支持回落。
-- 开发代理：`YGG_BACKEND_URL`（默认 `http://127.0.0.1:18080`），代理 `/api`、`/textures`、`/healthz`、`/readyz`、`/authserver`、`/sessionserver`。
+- 开发代理：`YGG_BACKEND_URL`（默认 `http://127.0.0.1:18080`），代理 `/api`、`/textures`、`/healthz`、`/readyz`、`/authserver`、`/sessionserver`、`/minecraft`、`/oauth`、`/oidc`。后两者用于后端把授权/回调重定向到 `/web/#/...` 的同一 origin 流程。
 
 | 项 | 事实（校准 2026-10-18，使用前复核） |
 | --- | --- |
 | 系统 / Shell | Windows；PowerShell 5.1 |
 | Node / npm | v24.21.0 / 11.19.0；React 19.3.1、Vite 8.3.4、TypeScript 7.0.2、Vitest、skinview3d 3.4.2 |
 | git | 不在 PATH，用 `%LOCALAPPDATA%\GitHubDesktop\app-*\resources\app\git\cmd\git.exe` |
-| 测试环境 | `YggServer-Go/.env` 的 PG（192.168.8.7:5432）与 Redis（:6379）；**需要 VPN** |
-| 仓库 | 本仓库分支 `deepseek-ver`；后端在同级 `YggServer-Go` |
+| 测试环境 | `YggServer-Go/.env` 的 PG（192.168.8.7:5432）与 Redis（:6379）；**需要 VPN**。2026-10-19 的运营/授权验收改用本机 Docker PostgreSQL 17 + Redis 6380，见 README |
+| 仓库 | 本仓库当前工作分支 `dslocal`；后端在同级 `YggServer-Go`。另有 `main`/`deepseek-ver`/`gptlocal`，不要擅自切换 |
 
 ---
 
@@ -187,6 +193,10 @@ npm run build       # tsc --noEmit && vite build
 | 2026-10-18 | 加依赖后 dev server 未重启 | Vite 预打包缓存导致导入失败/白屏 | 重启 `npm run dev` |
 | 2026-10-18 | 登录后立刻导航被覆盖 | 自动化刚登录就跳转，随后被登录逻辑重置为 `#/` | 等落地页元素出现再跳 |
 | 2026-10-18 | 无 VPN 时测试环境"看起来通" | TCP 可连但 PG 握手 EOF、Redis 超时 | 先连 VPN，不要误判后端 bug |
+| 2026-10-19 | Linux 下 import 大小写敏感 | `import ... from './ui'`/`'./icons'` 在 Windows 通过，Linux 下 `tsc` 报找不到模块 | 统一写成实际文件名 `./UI`、`./Icons`；新增文件保持大小写一致 |
+| 2026-10-19 | 站点配置在已打开的其他标签页不自动刷新 | 所有者保存注册开关/费用后，另一个标签页仍显示旧规则；后端已按新配置校验 | 验收前刷新页面；不要误判为保存失败。当前只在保存者自己的 `SiteProvider` 上 reload |
+| 2026-10-19 | `PUT /api/admin/site` 是全量对象 | 少传字段会被零值覆盖或触发 400 | 管理表单始终提交完整 `SiteSettings`，不要只发送改动字段 |
+| 2026-10-19 | MariaDB 11.8 不是 MySQL 8.4 | 后端迁移 013 的表达式索引失败，`-migrate` 报 dirty | 本地验收用 PostgreSQL 17；生产 MySQL 用 8.4+。这是后端兼容问题，不要改前端或迁移 |
 |  |  |  |  |
 
 ---

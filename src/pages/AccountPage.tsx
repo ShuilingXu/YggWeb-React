@@ -14,6 +14,7 @@ import {
   requestEmailVerification,
 } from '../api/resources'
 import { useAuth } from '../components/AuthProvider'
+import { useSite } from '../components/SiteProvider'
 import {
   Badge,
   Button,
@@ -21,12 +22,13 @@ import {
   Field,
   Notice,
   useToast,
-} from '../components/ui'
+} from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import { formatDateTime } from '../lib/format'
 import { href, navigate } from '../lib/router'
 import { useSubmit } from '../lib/useAsync'
-import { isValidEmail, isValidPassword } from '../lib/validate'
+import { emailDomainAllowed, isValidEmail, isValidPassword } from '../lib/validate'
+import { AuthorizedAppsPanel, ExternalIdentitiesPanel } from './AccountConnections'
 
 export function AccountPage() {
   const auth = useAuth()
@@ -44,6 +46,9 @@ export function AccountPage() {
             <p className="page__sub">{t('account.sub')}</p>
           </div>
           <div className="page__actions">
+            <a className="mc-btn" href={href('/points')}>
+              {t('nav.points')}
+            </a>
             <a className="mc-btn" href={href('/players')}>
               {t('nav.players')}
             </a>
@@ -87,6 +92,8 @@ export function AccountPage() {
 
         <ChangePasswordPanel />
         <ChangeEmailPanel />
+        <AuthorizedAppsPanel />
+        <ExternalIdentitiesPanel />
 
         <div className="panel danger-zone">
           <div className="panel__head">
@@ -222,6 +229,7 @@ function ChangePasswordPanel() {
 
 function ChangeEmailPanel() {
   const auth = useAuth()
+  const site = useSite()
   const { notify } = useToast()
   const [password, setPassword] = useState('')
   const [email, setEmail] = useState('')
@@ -235,6 +243,11 @@ function ChangeEmailPanel() {
         event.preventDefault()
         if (!isValidEmail(email.trim())) {
           setError(t('auth.emailInvalid'))
+          return
+        }
+        const policy = site.site
+        if (policy && !emailDomainAllowed(email.trim(), policy.emailMode, policy.emailDomains)) {
+          setError(t('auth.emailDomainDenied'))
           return
         }
         setError(null)
@@ -251,6 +264,14 @@ function ChangeEmailPanel() {
       </div>
       <div className="panel__body stack">
         <p className="small dim">{t('account.emailHint')}</p>
+        {site.site && site.site.emailMode !== 0 ? (
+          <p className="small dim">
+            {t('auth.emailPolicy', {
+              mode: t(site.site.emailMode === 1 ? 'enum.emailMode.1' : 'enum.emailMode.2'),
+              domains: site.site.emailDomains,
+            })}
+          </p>
+        ) : null}
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <div className="grow">
             <Field label={t('account.currentPassword')} htmlFor="email-password" required>

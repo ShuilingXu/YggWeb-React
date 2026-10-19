@@ -234,3 +234,13 @@ export function IconSearch(props: IconProps) {
     </Svg>
   )
 }
+
+export function IconPoints(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 1.5L14 6l-6 8.5L2 6z" />
+      <path d="M2 6h12" />
+      <path d="M5 6l3 8.5L11 6" />
+    </Svg>
+  )
+}

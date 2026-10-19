@@ -12,6 +12,7 @@ import {
 } from '../api/resources'
 import type { Appearance, Profile, Texture } from '../api/types'
 import { useAuth } from '../components/AuthProvider'
+import { useSite } from '../components/SiteProvider'
 import { CharacterViewer } from '../components/CharacterViewer'
 import { TextureImage } from '../components/TextureImage'
 import {
@@ -24,17 +25,16 @@ import {
   Notice,
   Skeleton,
   useToast,
-} from '../components/ui'
+} from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import { shortId } from '../lib/format'
 import { href } from '../lib/router'
 import { useAsync, useSubmit } from '../lib/useAsync'
 import { isValidPlayerName } from '../lib/validate'
 
-const MAX_PLAYERS = 20
-
 export function PlayersPage() {
   const auth = useAuth()
+  const site = useSite()
   const { notify } = useToast()
   const players = useAsync((signal) => fetchPlayers(signal), [auth.loggedIn], {
     enabled: auth.loggedIn,
@@ -98,7 +98,9 @@ export function PlayersPage() {
   const list = players.data ?? []
   const closetItems = closet.data?.items ?? []
   const closetByHash = new Map(closetItems.map((item) => [item.hash, item]))
-  const atLimit = list.length >= MAX_PLAYERS
+  const maxPlayers = site.site?.maxPlayers
+  const atLimit = maxPlayers !== undefined && list.length >= maxPlayers
+  const playerCost = site.site?.playerCost ?? 0
 
   function textureLabel(hash: string | undefined): string {
     if (!hash) return t('players.none')
@@ -118,12 +120,15 @@ export function PlayersPage() {
 
         <CreatePlayerForm
           disabled={atLimit}
+          cost={playerCost}
           onCreated={() => {
             notify('ok', t('players.created'))
             players.reload()
           }}
         />
-        {atLimit ? <Notice tone="warn">{t('players.limit')}</Notice> : null}
+        {atLimit && maxPlayers !== undefined ? (
+          <Notice tone="warn">{t('players.limit', { max: maxPlayers })}</Notice>
+        ) : null}
 
         {players.loading ? (
           <div className="player-grid">
@@ -232,9 +237,11 @@ export function PlayersPage() {
 
 function CreatePlayerForm({
   disabled,
+  cost,
   onCreated,
 }: {
   disabled: boolean
+  cost: number
   onCreated: () => void
 }) {
   const [name, setName] = useState('')
@@ -266,7 +273,11 @@ function CreatePlayerForm({
           <Field
             label={t('players.name')}
             htmlFor="new-player"
-            hint={t('players.nameHint')}
+            hint={
+              cost > 0
+                ? `${t('players.nameHint')} · ${t('players.cost', { cost })}`
+                : t('players.nameHint')
+            }
             error={error}
             required
           >

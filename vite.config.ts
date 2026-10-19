@@ -16,6 +16,10 @@ export default defineConfig(({ mode }) => {
         '/api': backend,
         '/textures': backend,
         '/minecraft': backend,
+        // 后端会把 /oauth/authorize 与 /oidc/callback 重定向到 /web/#/...；
+        // 开发时把原路径也代理过去，才能从同一 origin 发起完整流程。
+        '/oauth': backend,
+        '/oidc': backend,
       },
     },
   }

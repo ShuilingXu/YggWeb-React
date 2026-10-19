@@ -2,17 +2,19 @@ import { TEXTURE_STATE, TEXTURE_TYPE } from '../api/enums'
 import { fetchCloset, fetchMyTextures, fetchPlayers, fetchTextures } from '../api/resources'
 import { CharacterViewer } from '../components/CharacterViewer'
 import { TextureCard } from '../components/TextureCard'
-import { CopyButton, EmptyState, ErrorState, Skeleton } from '../components/ui'
+import { CopyButton, EmptyState, ErrorState, Notice, Skeleton } from '../components/UI'
 import { t } from '../i18n/zh-CN'
 import { href } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
 import { useAuth } from '../components/AuthProvider'
-import { IconCloset, IconLibrary, IconPlayer, IconUpload } from '../components/icons'
+import { useSite } from '../components/SiteProvider'
+import { IconCloset, IconLibrary, IconPlayer, IconUpload } from '../components/Icons'
 
 const LATEST_LIMIT = 12
 
 export function HomePage() {
   const auth = useAuth()
+  const site = useSite()
   const latest = useAsync((signal) => fetchTextures({ limit: LATEST_LIMIT, sort: 'newest' }, signal), [])
   const mine = useAsync((signal) => fetchMyTextures({ limit: 1 }, signal), [auth.loggedIn], {
     enabled: auth.loggedIn,
@@ -37,7 +39,9 @@ export function HomePage() {
           <div className="hero__copy">
             <p className="hero__eyebrow">{t('home.eyebrow')}</p>
             <h1 className="hero__title">{t('home.title')}</h1>
-            <p className="hero__desc">{t('home.desc')}</p>
+            <p className="hero__desc pre-wrap">
+              {site.site?.description.trim() || t('home.desc')}
+            </p>
             <div className="hero__actions">
               <a className="mc-btn mc-btn--primary" href={href('/skinlib')}>
                 {t('home.cta.library')}
@@ -79,6 +83,10 @@ export function HomePage() {
             )}
           </div>
         </section>
+
+        {site.site?.registration === 0 ? (
+          <Notice tone="warn">{t('auth.registrationClosed')}</Notice>
+        ) : null}
 
         <section className="stats">
           <div className="stat">

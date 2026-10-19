@@ -4,19 +4,22 @@ import { bindPlayerTextures, saveToCloset } from '../api/resources'
 import type { Profile, Texture } from '../api/types'
 import { t } from '../i18n/zh-CN'
 import { useSubmit } from '../lib/useAsync'
-import { Button, Dialog, Field } from './ui'
+import { Button, Dialog, Field } from './UI'
 
 /** 收藏与改备注走同一个 PUT，只是标题与初始值不同。 */
 export function ClosetNameDialog({
   textureId,
   initialName,
   title,
+  cost,
   onClose,
   onDone,
 }: {
   textureId: string
   initialName: string
   title: string
+  /** 仅新收藏收费；从衣柜改备注时不要传。 */
+  cost?: number
   onClose: () => void
   onDone: () => void
 }) {
@@ -54,6 +57,9 @@ export function ClosetNameDialog({
           onChange={(event) => setName(event.target.value)}
         />
       </Field>
+      {cost && cost > 0 ? (
+        <p className="small dim">{t('texture.closet.cost', { cost })}</p>
+      ) : null}
       {submit.error ? <span className="field__error">{submit.error}</span> : null}
     </Dialog>
   )
