@@ -4,12 +4,19 @@ import type {
   Account,
   AuditEvent,
   AuthResponse,
+  ExternalIdentity,
   ListQuery,
+  OAuthClient,
+  OAuthConsentInput,
+  OidcStart,
   Paged,
   Player,
+  PluginInfo,
   ProfileAppearance,
   Report,
+  SiteSettings,
   Texture,
+  Wallet,
 } from './types'
 
 async function listWithMeta<T>(path: string, query: ListQuery, signal?: AbortSignal): Promise<Paged<T>> {
@@ -100,6 +107,52 @@ export const playerApi = {
       return {}
     }
   },
+}
+
+export const siteApi = {
+  get: (signal?: AbortSignal) => request<SiteSettings>('/api/site', { signal, anonymous: true }),
+  save: (settings: SiteSettings) =>
+    request<void>('/api/admin/site', { method: 'PUT', body: settings }),
+}
+
+export const pointsApi = {
+  wallet: (signal?: AbortSignal) => request<Wallet>('/api/account/points', { signal }),
+  sign: () => request<Wallet>('/api/account/sign', { method: 'POST' }),
+}
+
+export const oauthApi = {
+  client: (clientId: string, signal?: AbortSignal) =>
+    request<OAuthClient>('/api/oauth/client', { query: { client_id: clientId }, signal }),
+  authorize: (input: OAuthConsentInput) =>
+    request<{ redirect: string }>('/api/oauth/authorize', { method: 'POST', body: input }),
+  authorizedApps: (signal?: AbortSignal) => request<OAuthClient[]>('/api/account/oauth', { signal }),
+  revoke: (clientId: string) =>
+    request<void>(`/api/account/oauth/${clientId}`, { method: 'DELETE' }),
+  adminClients: (signal?: AbortSignal) => request<OAuthClient[]>('/api/admin/oauth/clients', { signal }),
+  createClient: (name: string, redirectUri: string) =>
+    request<OAuthClient>('/api/admin/oauth/clients', { method: 'POST', body: { name, redirectUri } }),
+  deleteClient: (clientId: string) =>
+    request<void>(`/api/admin/oauth/clients/${clientId}`, { method: 'DELETE' }),
+}
+
+export const oidcApi = {
+  start: (link: boolean) =>
+    request<OidcStart>(link ? '/api/account/oidc/start' : '/api/auth/oidc/start', { method: 'POST' }),
+  complete: (state: string, code: string) =>
+    request<AuthResponse>('/api/auth/oidc/complete', {
+      method: 'POST',
+      body: { state, code },
+      anonymous: true,
+    }),
+  identities: (signal?: AbortSignal) => request<ExternalIdentity[]>('/api/account/oidc', { signal }),
+  unlink: (id: string, password: string) =>
+    request<void>(`/api/account/oidc/${id}`, { method: 'DELETE', body: { password } }),
+}
+
+export const pluginApi = {
+  list: (signal?: AbortSignal) => request<PluginInfo[]>('/api/admin/plugins', { signal }),
+  query: (id: string, path: string, signal?: AbortSignal) =>
+    request<unknown>(`/api/plugins/${id}${path}`, { signal }),
 }
 
 export const adminApi = {

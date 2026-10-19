@@ -6,6 +6,7 @@ import type { ProfileAppearance } from '../api/types'
 import { useAuth } from '../lib/auth'
 import { Link } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
+import { useSite } from '../components/SiteProvider'
 import { t } from '../i18n'
 import { PageHeader } from '../components/AppShell'
 import { TextureImage } from '../components/TextureImage'
@@ -28,6 +29,7 @@ const playerPattern = /^[A-Za-z0-9_]{3,16}$/
 
 export function PlayersPage() {
   const { status } = useAuth()
+  const site = useSite()
   const toast = useToast()
   const authed = status === 'authenticated'
 
@@ -74,6 +76,10 @@ export function PlayersPage() {
     }
   }
 
+  const maxPlayers = site.site?.maxPlayers
+  const atLimit = maxPlayers !== undefined && (players.data?.length ?? 0) >= maxPlayers
+  const playerCost = site.site?.playerCost ?? 0
+
   if (!authed) {
     return (
       <>
@@ -95,11 +101,19 @@ export function PlayersPage() {
         title={t('players.title')}
         subtitle={t('players.subtitle')}
         actions={
-          <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+          <Button variant="primary" size="sm" disabled={atLimit} onClick={() => setCreateOpen(true)}>
             {t('players.create')}
           </Button>
         }
       />
+      {playerCost > 0 ? (
+        <p className="muted" style={{ marginTop: 'var(--space-2)' }}>
+          {t('players.cost', { cost: playerCost })}
+        </p>
+      ) : null}
+      {atLimit && maxPlayers !== undefined ? (
+        <div className="notice" role="status">{t('players.limit', { max: maxPlayers })}</div>
+      ) : null}
 
       {players.loading ? (
         <div className="order-list" aria-hidden="true">
@@ -122,7 +136,7 @@ export function PlayersPage() {
           <EmptyState
             title={t('players.empty')}
             action={
-              <Button variant="primary" onClick={() => setCreateOpen(true)}>
+              <Button variant="primary" disabled={atLimit} onClick={() => setCreateOpen(true)}>
                 {t('players.create')}
               </Button>
             }
@@ -209,7 +223,11 @@ export function PlayersPage() {
           </>
         }
       >
-        <Field label={t('auth.playerName')} htmlFor="player-create" hint={t('players.createHint')}>
+        <Field
+          label={t('auth.playerName')}
+          htmlFor="player-create"
+          hint={playerCost > 0 ? `${t('players.createHint')} ${t('players.cost', { cost: playerCost })}` : t('players.createHint')}
+        >
           <TextInput id="player-create" value={createName} onChange={(event) => setCreateName(event.target.value)} />
         </Field>
       </Dialog>

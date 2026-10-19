@@ -5,12 +5,16 @@ import { Permission } from '../api/enums'
 import { useAuth } from '../lib/auth'
 import { Link, navigate } from '../lib/router'
 import { formatDateTime } from '../lib/format'
+import { emailDomainAllowed, isValidPassword } from '../lib/validate'
+import { useSite } from '../components/SiteProvider'
 import { t } from '../i18n'
 import { PageHeader } from '../components/AppShell'
 import { Badge, Button, ConfirmDialog, Field, TextInput, useToast } from '../components/ui'
+import { AuthorizedAppsPanel, ExternalIdentitiesPanel } from './ProfileConnections'
 
 export function ProfilePage() {
   const { status, account, logout } = useAuth()
+  const site = useSite()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [passwordError, setPasswordError] = useState('')
@@ -41,7 +45,7 @@ export function ProfilePage() {
 
   const handlePassword = async () => {
     setPasswordError('')
-    if (passwordForm.next.length < 8) {
+    if (!isValidPassword(passwordForm.next)) {
       setPasswordError(t('profile.invalidNewPassword'))
       return
     }
@@ -68,6 +72,10 @@ export function ProfilePage() {
       setEmailError(t('auth.invalidEmail'))
       return
     }
+    if (site.site && !emailDomainAllowed(emailForm.email.trim(), site.site.emailMode, site.site.emailDomains)) {
+      setEmailError(t('auth.emailDomainDenied'))
+      return
+    }
     setBusy(true)
     try {
       await accountApi.changeEmail(emailForm.password, emailForm.email.trim().toLowerCase())
@@ -83,7 +91,15 @@ export function ProfilePage() {
 
   return (
     <>
-      <PageHeader title={t('profile.title')} subtitle={t('profile.subtitle')} />
+      <PageHeader
+        title={t('profile.title')}
+        subtitle={t('profile.subtitle')}
+        actions={
+          <Link to="/points" className="btn btn--sm">
+            {t('profile.points')}
+          </Link>
+        }
+      />
 
       <div className="stack">
         <section className="card">
@@ -201,12 +217,24 @@ export function ProfilePage() {
               onChange={(event) => setEmailForm({ ...emailForm, email: event.target.value })}
             />
           </Field>
+          {site.site && site.site.emailMode !== 0 ? (
+            <p className="muted" style={{ fontSize: 'var(--text-xs)' }}>
+              {t('auth.emailPolicy', {
+                mode:
+                  site.site.emailMode === 1 ? t('admin.site.modeAllow') : t('admin.site.modeDeny'),
+                domains: site.site.emailDomains,
+              })}
+            </p>
+          ) : null}
           <div className="form-actions">
             <Button variant="primary" loading={busy} onClick={() => void handleEmail()}>
               {t('common.save')}
             </Button>
           </div>
         </section>
+
+        <AuthorizedAppsPanel />
+        <ExternalIdentitiesPanel />
 
         <section className="card card--danger form-grid">
           <h2 className="section-title">{t('profile.dangerZone')}</h2>

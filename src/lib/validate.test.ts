@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { checkDimensions, isPngSignature, isValidEmail, isValidPlayerName } from './validate'
+import {
+  checkDimensions,
+  emailDomainAllowed,
+  isPngSignature,
+  isValidEmail,
+  isValidOidcIssuer,
+  isValidPassword,
+  isValidPlayerName,
+  isValidRedirectUri,
+} from './validate'
 
 describe('checkDimensions', () => {
   it('accepts 64x64 and 128x64 steve skins', () => {
@@ -52,5 +61,32 @@ describe('name and email validation', () => {
   it('accepts ordinary mailbox shapes only', () => {
     expect(isValidEmail('webqa@example.test')).toBe(true)
     expect(isValidEmail('no-at-sign')).toBe(false)
+  })
+
+  it('requires 8-72 UTF-8 bytes for passwords', () => {
+    expect(isValidPassword('1234567')).toBe(false)
+    expect(isValidPassword('12345678')).toBe(true)
+    expect(isValidPassword('a'.repeat(72))).toBe(true)
+    expect(isValidPassword('a'.repeat(73))).toBe(false)
+  })
+
+  it('matches exact email domains for allow/deny lists', () => {
+    expect(emailDomainAllowed('a@example.com', 0, '')).toBe(true)
+    expect(emailDomainAllowed('a@Example.com', 1, 'example.com other.test')).toBe(true)
+    expect(emailDomainAllowed('a@sub.example.com', 1, 'example.com')).toBe(false)
+    expect(emailDomainAllowed('a@example.com', 2, 'example.com')).toBe(false)
+    expect(emailDomainAllowed('a@other.test', 2, 'example.com')).toBe(true)
+  })
+
+  it('accepts only HTTP(S) redirects and OIDC issuers', () => {
+    expect(isValidRedirectUri('https://app.example.test/callback')).toBe(true)
+    expect(isValidRedirectUri('http://127.0.0.1:8080/callback')).toBe(true)
+    expect(isValidRedirectUri('http://example.test/callback')).toBe(false)
+    expect(isValidRedirectUri('https://app.example.test/callback#fragment')).toBe(false)
+
+    expect(isValidOidcIssuer('https://id.example.test')).toBe(true)
+    expect(isValidOidcIssuer('http://127.0.0.1:9000')).toBe(true)
+    expect(isValidOidcIssuer('http://id.example.test')).toBe(false)
+    expect(isValidOidcIssuer('https://id.example.test/?query=1')).toBe(false)
   })
 })

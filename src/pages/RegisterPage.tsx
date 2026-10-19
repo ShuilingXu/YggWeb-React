@@ -2,12 +2,15 @@ import { useState, type FormEvent } from 'react'
 import { Link, navigate } from '../lib/router'
 import { ApiError } from '../api/client'
 import { authApi } from '../api/resources'
+import { useSite } from '../components/SiteProvider'
 import { t } from '../i18n'
+import { emailDomainAllowed, isValidPassword } from '../lib/validate'
 import { Button, Field, TextInput, useToast } from '../components/ui'
 
 const playerPattern = /^[A-Za-z0-9_]{3,16}$/
 
 export function RegisterPage() {
+  const site = useSite()
   const toast = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,11 +18,16 @@ export function RegisterPage() {
   const [playerName, setPlayerName] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  const closed = site.site?.registration === 0
+  const policy = site.site
 
   const validate = (): boolean => {
     const next: Record<string, string> = {}
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = t('auth.invalidEmail')
-    if (password.length < 8) next.password = t('auth.passwordTooShort')
+    else if (policy && !emailDomainAllowed(email.trim(), policy.emailMode, policy.emailDomains)) {
+      next.email = t('auth.emailDomainDenied')
+    }
+    if (!isValidPassword(password)) next.password = t('auth.passwordTooShort')
     if (password !== confirm) next.confirm = t('auth.passwordMismatch')
     if (!playerPattern.test(playerName.trim())) next.playerName = t('auth.invalidPlayerName')
     setErrors(next)
@@ -28,7 +36,7 @@ export function RegisterPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!validate()) return
+    if (closed || !validate()) return
     setBusy(true)
     try {
       await authApi.register(email.trim().toLowerCase(), password, playerName.trim())
@@ -62,6 +70,14 @@ export function RegisterPage() {
       <form className="auth-card" onSubmit={submit} noValidate>
         <h1>{t('auth.registerTitle')}</h1>
         <p className="auth-card__sub">{t('auth.registerSubtitle')}</p>
+        {closed ? <div className="notice" role="status">{t('auth.registrationClosed')}</div> : null}
+        {policy && policy.emailMode !== 0 ? (
+          <p className="muted" style={{ fontSize: 'var(--text-xs)' }}>
+            {t(policy.emailMode === 1 ? 'auth.emailAllowHint' : 'auth.emailDenyHint', {
+              domains: policy.emailDomains,
+            })}
+          </p>
+        ) : null}
         <Field label={t('auth.email')} htmlFor="register-email" error={errors.email}>
           <TextInput
             id="register-email"
@@ -110,7 +126,7 @@ export function RegisterPage() {
             {errors.form}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" block loading={busy}>
+        <Button type="submit" variant="primary" block loading={busy} disabled={closed}>
           {t('auth.submitRegister')}
         </Button>
         <div className="auth-card__links">

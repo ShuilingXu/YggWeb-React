@@ -3,6 +3,7 @@ import { ApiError } from '../api/client'
 import { textureApi } from '../api/resources'
 import { TextureType } from '../api/enums'
 import { useAuth } from '../lib/auth'
+import { useSite } from '../components/SiteProvider'
 import { checkDimensions, isPngSignature, type DimensionProblem } from '../lib/validate'
 import { Link, navigate } from '../lib/router'
 import { t } from '../i18n'
@@ -25,6 +26,7 @@ const dimensionMessages: Record<DimensionProblem, string> = {
 
 export function UploadPage() {
   const { status } = useAuth()
+  const site = useSite()
   const toast = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -134,6 +136,15 @@ export function UploadPage() {
   return (
     <>
       <PageHeader title={t('upload.title')} subtitle={t('upload.subtitle')} />
+      {site.site ? (
+        <div className="notice" style={{ marginBottom: 'var(--space-4)' }}>
+          {t('upload.costNotice', {
+            public: site.site.uploadCost,
+            private: site.site.privateUploadCost,
+            closet: site.site.closetCost,
+          })}
+        </div>
+      ) : null}
       <div className="detail-layout">
         <form
           className="card form-grid"

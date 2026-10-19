@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
 import { adminApi, textureApi } from '../api/resources'
 import { AccountState, Permission, ReportState } from '../api/enums'
@@ -10,14 +10,20 @@ import { t } from '../i18n'
 import { PageHeader } from '../components/AppShell'
 import { TextureImage } from '../components/TextureImage'
 import { Badge, Button, Dialog, EmptyState, ErrorState, Field, Skeleton, Tabs, Textarea, useToast } from '../components/ui'
+import { AdminSitePanel } from './AdminSitePanel'
 
 const PAGE = 50
 
-type AdminTab = 'users' | 'reports' | 'audit'
+type AdminTab = 'users' | 'reports' | 'audit' | 'site'
 
 export function AdminPage({ initialTab }: { initialTab: AdminTab }) {
-  const { isAdmin, status } = useAuth()
+  const { isAdmin, isOwner, status } = useAuth()
   const [tab, setTab] = useState<AdminTab>(initialTab)
+
+  // /admin 与 /admin/:tab 复用同一个组件，路由变化时要同步当前标签页。
+  useEffect(() => {
+    setTab(initialTab)
+  }, [initialTab])
 
   if (status !== 'authenticated') {
     return (
@@ -39,6 +45,15 @@ export function AdminPage({ initialTab }: { initialTab: AdminTab }) {
     )
   }
 
+  if (tab === 'site' && !isOwner) {
+    return (
+      <>
+        <PageHeader title={t('admin.title')} />
+        <ErrorState message={t('admin.ownerOnly')} />
+      </>
+    )
+  }
+
   return (
     <>
       <PageHeader title={t('admin.title')} />
@@ -48,6 +63,7 @@ export function AdminPage({ initialTab }: { initialTab: AdminTab }) {
           { value: 'users', label: t('admin.users') },
           { value: 'reports', label: t('admin.reports') },
           { value: 'audit', label: t('admin.audit') },
+          ...(isOwner ? [{ value: 'site', label: t('admin.siteTab') }] : []),
         ]}
         value={tab}
         onChange={(value) => setTab(value as AdminTab)}
@@ -55,6 +71,7 @@ export function AdminPage({ initialTab }: { initialTab: AdminTab }) {
       {tab === 'users' ? <UsersPanel /> : null}
       {tab === 'reports' ? <ReportsPanel /> : null}
       {tab === 'audit' ? <AuditPanel /> : null}
+      {tab === 'site' ? <AdminSitePanel /> : null}
     </>
   )
 }
@@ -353,6 +370,14 @@ function AuditPanel() {
         return t('admin.actionTexture')
       case 3:
         return t('admin.actionReport')
+      case 4:
+        return t('admin.actionSite')
+      case 5:
+        return t('admin.actionOAuth')
+      case 6:
+        return t('admin.actionExternalBind')
+      case 7:
+        return t('admin.actionExternalUnbind')
       default:
         return String(action)
     }

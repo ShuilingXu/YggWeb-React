@@ -38,3 +38,55 @@ export function isValidPlayerName(value: string): boolean {
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 }
+
+/** 后端按字节计 8–72 字节（bcrypt 上限）。 */
+export function passwordByteLength(value: string): number {
+  return new TextEncoder().encode(value).length
+}
+
+export function isValidPassword(value: string): boolean {
+  const length = passwordByteLength(value)
+  return length >= 8 && length <= 72
+}
+
+/** 与后端 site.Settings.AllowsEmail 一致：精确域名、大小写不敏感、不含子域名。 */
+export function emailDomainAllowed(email: string, mode: number, domains: string): boolean {
+  if (mode === 0) return true
+  const domain = email.split('@')[1]?.trim().toLowerCase()
+  if (!domain) return false
+  const listed = domains
+    .split(/\s+/)
+    .filter(Boolean)
+    .some((entry) => entry.toLowerCase() === domain)
+  return mode === 1 ? listed : !listed
+}
+
+/** 与后端 validRedirect 对齐：HTTPS，或 loopback HTTP；拒绝凭据与 fragment。 */
+export function isValidRedirectUri(value: string): boolean {
+  if (!value || value.length > 2048) return false
+  try {
+    const url = new URL(value)
+    if (url.username || url.password || url.hash) return false
+    if (url.protocol === 'https:') return true
+    if (url.protocol !== 'http:') return false
+    const host = url.hostname.replace(/^\[|\]$/g, '')
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+  } catch {
+    return false
+  }
+}
+
+/** 与后端 site.ValidIssuer 对齐：HTTPS，或 loopback HTTP；拒绝 query/fragment。 */
+export function isValidOidcIssuer(value: string): boolean {
+  if (!value || value.length > 255) return false
+  try {
+    const url = new URL(value)
+    if (url.username || url.password || url.search || url.hash || !url.hostname) return false
+    if (url.protocol === 'https:') return true
+    if (url.protocol !== 'http:') return false
+    const host = url.hostname.replace(/^\[|\]$/g, '')
+    return host === 'localhost' || host === '::1' || host.startsWith('127.')
+  } catch {
+    return false
+  }
+}

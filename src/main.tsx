@@ -5,6 +5,7 @@ import './styles/base.css'
 import './styles/components.css'
 import { App } from './App'
 import { AuthProvider } from './lib/auth'
+import { SiteProvider } from './components/SiteProvider'
 import { ToastProvider } from './components/ui'
 
 const container = document.getElementById('root')
@@ -14,7 +15,9 @@ createRoot(container).render(
   <StrictMode>
     <ToastProvider>
       <AuthProvider>
-        <App />
+        <SiteProvider>
+          <App />
+        </SiteProvider>
       </AuthProvider>
     </ToastProvider>
   </StrictMode>,

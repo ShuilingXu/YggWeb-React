@@ -9,9 +9,14 @@ type AuthState =
 
 type AuthContextValue = AuthState & {
   login: (identifier: string, password: string) => Promise<void>
+  /** OIDC 回调已经拿到本站 accessToken，直接恢复账号。 */
+  loginWithToken: (accessToken: string) => Promise<void>
   logout: () => Promise<void>
+  /** 服务端已撤销令牌时只清理本地状态。 */
+  endSession: () => void
   refresh: () => Promise<void>
   isAdmin: boolean
+  isOwner: boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -30,14 +35,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const endSession = useCallback(() => {
+    setToken(null)
+    setState({ status: 'anonymous', account: null })
+  }, [])
+
+  const loginWithToken = useCallback(async (accessToken: string) => {
+    setToken(accessToken)
+    try {
+      const account = await authApi.me()
+      setState({ status: 'authenticated', account })
+    } catch (error) {
+      setToken(null)
+      setState({ status: 'anonymous', account: null })
+      throw error
+    }
+  }, [])
+
   const login = useCallback(
     async (identifier: string, password: string) => {
       const response = await authApi.login(identifier, password)
-      setToken(response.accessToken)
-      const account = await authApi.me()
-      setState({ status: 'authenticated', account })
+      await loginWithToken(response.accessToken)
     },
-    [],
+    [loginWithToken],
   )
 
   const logout = useCallback(async () => {
@@ -46,9 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // 令牌可能已失效，仍然清理本地状态。
     }
-    setToken(null)
-    setState({ status: 'anonymous', account: null })
-  }, [])
+    endSession()
+  }, [endSession])
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -83,11 +102,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       login,
+      loginWithToken,
       logout,
+      endSession,
       refresh,
       isAdmin: state.status === 'authenticated' && state.account.permission >= 1,
+      isOwner: state.status === 'authenticated' && state.account.permission >= 2,
     }),
-    [state, login, logout, refresh],
+    [state, login, loginWithToken, logout, endSession, refresh],
   )
 
   return (

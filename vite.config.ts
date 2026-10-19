@@ -15,6 +15,9 @@ export default defineConfig({
       '/readyz': backend,
       '/authserver': backend,
       '/sessionserver': backend,
+      // 后端把授权/回调重定向到 /web/#/...；开发时原路径也要走代理。
+      '/oauth': backend,
+      '/oidc': backend,
     },
   },
 })

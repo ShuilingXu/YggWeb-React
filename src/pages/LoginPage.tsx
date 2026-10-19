@@ -2,11 +2,14 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../lib/auth'
 import { Link, navigate, useRoute, useQueryParam } from '../lib/router'
 import { ApiError } from '../api/client'
+import { beginOidc } from '../lib/oidc'
+import { useSite } from '../components/SiteProvider'
 import { t } from '../i18n'
 import { Button, Field, TextInput, useToast } from '../components/ui'
 
 export function LoginPage() {
   const { login } = useAuth()
+  const site = useSite()
   const toast = useToast()
   const route = useRoute()
   const redirect = useQueryParam(route, 'next') || '/'
@@ -14,6 +17,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [oidcBusy, setOidcBusy] = useState(false)
+  const [oidcError, setOidcError] = useState('')
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -28,20 +33,27 @@ export function LoginPage() {
       toast.push(t('auth.loginTitle'), 'success')
       navigate(redirect)
     } catch (caught) {
-      if (caught instanceof ApiError) {
-        setError(caught.status === 403 ? t('common.errorForbidden') : caught.message)
-      } else {
-        setError(t('common.errorGeneric'))
-      }
+      setError(caught instanceof ApiError ? caught.message : t('common.errorGeneric'))
     } finally {
       setBusy(false)
+    }
+  }
+
+  const startOidc = async () => {
+    setOidcError('')
+    setOidcBusy(true)
+    try {
+      await beginOidc(false)
+    } catch (caught) {
+      setOidcError(caught instanceof ApiError ? caught.message : t('common.errorGeneric'))
+      setOidcBusy(false)
     }
   }
 
   return (
     <div className="auth-layout">
       <div>
-        <h1 style={{ fontSize: 'var(--text-2xl)' }}>{t('app.name')}</h1>
+        <h1 style={{ fontSize: 'var(--text-2xl)' }}>{site.site?.name || t('app.name')}</h1>
         <p className="muted" style={{ marginTop: 'var(--space-3)', maxWidth: '44ch' }}>
           {t('app.tagline')}。{t('home.description')}
         </p>
@@ -82,6 +94,23 @@ export function LoginPage() {
           <Link to="/register">{t('auth.toRegister')}</Link>
           <Link to="/forgot">{t('auth.forgotLink')}</Link>
         </div>
+        {site.site?.oidcEnabled === 1 ? (
+          <div className="stack" style={{ marginTop: 'var(--space-4)' }}>
+            <Button block loading={oidcBusy} onClick={() => void startOidc()}>
+              {t('auth.oidcLogin', {
+                name: site.site.oidcName || t('auth.oidcFallback'),
+              })}
+            </Button>
+            {oidcError ? (
+              <p className="field__error" role="alert">
+                {oidcError}
+              </p>
+            ) : null}
+            <p className="muted" style={{ fontSize: 'var(--text-xs)' }}>
+              {t('auth.oidcHint')}
+            </p>
+          </div>
+        ) : null}
       </form>
     </div>
   )

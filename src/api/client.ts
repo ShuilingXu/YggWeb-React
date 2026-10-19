@@ -12,6 +12,10 @@ export class ApiError extends Error {
   }
 }
 
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError
+}
+
 /** 令牌只允许放 sessionStorage：刷新可恢复，关闭标签页即失效，避免长期驻留。 */
 const TOKEN_KEY = 'ygg.session.token'
 
@@ -51,13 +55,41 @@ export function setSessionVerifier(verifier: (() => Promise<boolean>) | null): v
   verifySession = verifier
 }
 
-export function messageForStatus(status: number): string {
+export function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message
+  if (error instanceof DOMException && error.name === 'AbortError') return ''
+  return t('common.errorGeneric')
+}
+
+function messageForCode(code: string): string | null {
+  switch (code) {
+    case 'InsufficientPoints':
+      return t('common.errorInsufficientPoints')
+    case 'AlreadySigned':
+      return t('common.errorAlreadySigned')
+    case 'PluginDenied':
+      return t('common.errorPluginDenied')
+    default:
+      return null
+  }
+}
+
+export function messageForStatus(status: number, code?: string, path?: string): string {
+  const mapped = code ? messageForCode(code) : null
+  if (mapped) return mapped
   switch (status) {
     case 0:
       return t('common.errorNetwork')
     case 400:
-      return t('common.errorForbidden')
+      return t('common.errorBadRequest')
     case 403:
+      if (path === '/api/auth/login') return t('auth.invalidCredentials')
+      if (path === '/api/auth/register') return t('auth.registrationClosed')
+      if (path === '/api/auth/oidc/complete') return t('oidc.denied')
+      if (path?.startsWith('/api/oauth/') || path === '/api/oauth/authorize') return t('oauth.disabled')
+      if (path === '/api/account' || path?.startsWith('/api/account/oidc/') || path === '/api/account/password' || path === '/api/account/email') {
+        return t('profile.wrongPassword')
+      }
       return t('common.errorForbidden')
     case 404:
       return t('common.errorNotFound')
@@ -125,20 +157,28 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   if (!response.ok) {
-    let detail = ''
+    let code: string | undefined
     try {
-      const payload = (await response.json()) as { error?: string; errorMessage?: string }
-      detail = payload.errorMessage ?? payload.error ?? ''
+      const payload = (await response.json()) as { error?: string }
+      code = payload.error
     } catch {
       // 非 JSON 错误体：状态码足够定位问题。
     }
-    if (active && response.status === 401) {
-      onUnauthorized?.()
-    } else if (active && response.status === 403 && path !== '/api/account' && verifySession) {
-      const valid = await verifySession().catch(() => false)
-      if (!valid) onUnauthorized?.()
+    const sessionProbe = path === '/api/account' && (options.method ?? 'GET') === 'GET'
+    if (active && (response.status === 401 || response.status === 403)) {
+      if (sessionProbe) {
+        onUnauthorized?.()
+        throw new ApiError(response.status, t('auth.sessionExpired'), code)
+      }
+      if (verifySession) {
+        const valid = response.status === 401 ? false : await verifySession().catch(() => false)
+        if (!valid) {
+          onUnauthorized?.()
+          throw new ApiError(response.status, t('auth.sessionExpired'), code)
+        }
+      }
     }
-    throw new ApiError(response.status, messageForStatus(response.status) + (detail ? ` (${detail})` : ''))
+    throw new ApiError(response.status, messageForStatus(response.status, code, path), code)
   }
 
   if (response.status === 204) return undefined as T

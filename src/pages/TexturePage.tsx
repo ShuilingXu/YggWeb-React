@@ -3,6 +3,7 @@ import { ApiError } from '../api/client'
 import { adminApi, textureApi } from '../api/resources'
 import { TextureType, isSkinType } from '../api/enums'
 import { useAuth } from '../lib/auth'
+import { useSite } from '../components/SiteProvider'
 import { Link, navigate } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
 import { formatBytes, formatDateTime } from '../lib/format'
@@ -29,6 +30,7 @@ const SkinViewer = lazy(() => import('../components/SkinViewer'))
 
 export function TexturePage({ id }: { id: string }) {
   const { account, status, isAdmin } = useAuth()
+  const site = useSite()
   const toast = useToast()
   const texture = useAsync((signal) => textureApi.get(id, signal), [id])
   const authed = status === 'authenticated'
@@ -55,6 +57,12 @@ export function TexturePage({ id }: { id: string }) {
   const canManage = isOwner || isAdmin
   // 3D 需要匿名可取的原始 PNG：只有公开且未被下架的条目能走 /textures/{hash}。
   const canUse3d = Boolean(data && isSkinType(data.type) && data.public === 1 && data.state === 0 && data.hash)
+  const closetCost = site.site?.closetCost ?? 0
+  const privacyCost =
+    site.site && data
+      ? Math.ceil(data.sizeBytes / 1024) *
+        Math.max(0, site.site.privateUploadCost - site.site.uploadCost)
+      : 0
 
   const refreshAll = () => {
     texture.reload()
@@ -220,6 +228,11 @@ export function TexturePage({ id }: { id: string }) {
               </Button>
             ) : null}
           </div>
+          {authed && !inCloset && closetCost > 0 ? (
+            <p className="muted" style={{ textAlign: 'center', fontSize: 'var(--text-xs)' }}>
+              {t('texture.closetCost', { cost: closetCost })}
+            </p>
+          ) : null}
         </div>
 
         <div className="stack">
@@ -306,6 +319,11 @@ export function TexturePage({ id }: { id: string }) {
                   <TrashIcon /> {t('texture.delete')}
                 </Button>
               </div>
+              {data.public === 1 && privacyCost > 0 ? (
+                <p className="muted" style={{ fontSize: 'var(--text-xs)' }}>
+                  {t('texture.privacyCost', { cost: privacyCost })}
+                </p>
+              ) : null}
               {isAdmin ? (
                 <div className="row" style={{ flexWrap: 'wrap' }}>
                   <span className="muted" style={{ fontSize: 'var(--text-xs)' }}>

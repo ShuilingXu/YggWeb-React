@@ -3,15 +3,18 @@ import { useAuth } from '../lib/auth'
 import { Link, navigate } from '../lib/router'
 import { useTheme } from '../lib/theme'
 import { t } from '../i18n'
-import { useToast } from './ui'
+import { useSite } from './SiteProvider'
+import { Button, useToast } from './ui'
 import { MoonIcon, SunIcon } from './icons'
 
 type NavItem = { to: string; label: string; exact?: boolean; optional?: boolean }
 
 export function AppShell({ path, children }: { path: string; children: ReactNode }) {
   const { status, account, logout, isAdmin } = useAuth()
+  const site = useSite()
   const { theme, toggle } = useTheme()
   const toast = useToast()
+  const siteName = site.site?.name?.trim() || t('app.name')
 
   useEffect(() => {
     const titleMap: [string, string][] = [
@@ -19,22 +22,28 @@ export function AppShell({ path, children }: { path: string; children: ReactNode
       ['/upload', t('upload.title')],
       ['/closet', t('closet.title')],
       ['/players', t('players.title')],
+      ['/points', t('points.title')],
       ['/profile', t('profile.title')],
+      ['/admin/site', t('admin.siteTab')],
       ['/admin', t('admin.title')],
       ['/login', t('auth.loginTitle')],
       ['/register', t('auth.registerTitle')],
       ['/forgot', t('auth.forgotTitle')],
     ]
     const match = titleMap.find(([prefix]) => path.startsWith(prefix))
-    document.title = match ? `${match[1]} · ${t('app.name')}` : t('app.name')
-  }, [path])
+    document.title = match ? `${match[1]} · ${siteName}` : siteName
+  }, [path, siteName])
 
   const nav: NavItem[] = [
     { to: '/', label: t('nav.home'), exact: true },
     { to: '/library', label: t('nav.library') },
   ]
   if (status === 'authenticated') {
-    nav.push({ to: '/closet', label: t('nav.closet') }, { to: '/players', label: t('nav.players') })
+    nav.push(
+      { to: '/closet', label: t('nav.closet') },
+      { to: '/players', label: t('nav.players') },
+      { to: '/points', label: t('nav.points') },
+    )
   } else {
     nav.push({ to: '/upload', label: t('upload.title'), optional: true })
   }
@@ -55,14 +64,14 @@ export function AppShell({ path, children }: { path: string; children: ReactNode
       </a>
       <header className="site-header">
         <div className="container site-header__inner">
-          <Link to="/" className="brand" aria-label={t('app.name')}>
+          <Link to="/" className="brand" aria-label={siteName}>
             <span className="brand__mark" aria-hidden="true">
               <span />
               <span />
               <span />
               <span />
             </span>
-            Ygg
+            {siteName}
           </Link>
           <nav className="site-nav" aria-label={t('nav.home')}>
             {nav.map((item) => (
@@ -110,12 +119,27 @@ export function AppShell({ path, children }: { path: string; children: ReactNode
         </div>
       </header>
       <main className="page" id="main" tabIndex={-1}>
-        <div className="container">{children}</div>
+        <div className="container">
+          {site.site?.announcement.trim() ? (
+            <div className="notice site-announcement" role="status">
+              {site.site.announcement}
+            </div>
+          ) : null}
+          {site.error ? (
+            <div className="notice site-announcement" role="alert">
+              <span>{t('site.loadFailed')}</span>
+              <Button size="sm" onClick={site.reload}>
+                {t('common.retry')}
+              </Button>
+            </div>
+          ) : null}
+          {children}
+        </div>
       </main>
       <footer className="site-footer">
         <div className="container site-footer__inner">
           <span>
-            {t('app.name')} · {t('app.tagline')}
+            {siteName} · {t('app.tagline')}
           </span>
           <span className="mono">YggServer-Go · Yggdrasil</span>
         </div>

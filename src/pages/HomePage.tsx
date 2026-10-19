@@ -4,20 +4,25 @@ import { useAsync } from '../lib/useAsync'
 import { t } from '../i18n'
 import { textureApi } from '../api/resources'
 import { PageHeader } from '../components/AppShell'
+import { useSite } from '../components/SiteProvider'
 import { TextureCard } from '../components/TextureCard'
 import { EmptyState, ErrorState, SkeletonGrid } from '../components/ui'
 import { UploadIcon } from '../components/icons'
 
 export function HomePage() {
   const { status } = useAuth()
+  const site = useSite()
   const latest = useAsync((signal) => textureApi.list({ limit: 6, sort: 'newest' }, signal), [])
 
   return (
     <>
       <section className="hero">
         <div>
-          <h1 className="hero__title">{t('app.name')}</h1>
-          <p className="hero__text">{t('home.description')}</p>
+          <h1 className="hero__title">{site.site?.name || t('app.name')}</h1>
+          <p className="hero__text">{site.site?.description.trim() || t('home.description')}</p>
+          {site.site?.registration === 0 ? (
+            <div className="notice" role="status">{t('auth.registrationClosed')}</div>
+          ) : null}
           <div className="hero__actions">
             <Link to="/library" className="btn btn--primary">
               {t('home.ctaLibrary')}
