@@ -74,7 +74,7 @@ export interface AuditEvent {
   id: number
   actor: string
   target: string
-  action: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+  action: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
   requestId: string
   result: 0 | 1
   targetState: -1 | AccountState
@@ -110,7 +110,7 @@ export interface SiteSettings {
 export interface Wallet {
   balance: number
   nextSignAt: string | null
-  entries: { id: number; delta: number; kind: 0 | 1 | 2 | 3 | 4 | 5; createdAt: string }[]
+  entries: { id: number; delta: number; kind: 0 | 1 | 2 | 3 | 4 | 5 | 6; createdAt: string }[]
 }
 export interface OAuthClient {
   id: string

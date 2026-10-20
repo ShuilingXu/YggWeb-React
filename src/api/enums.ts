@@ -35,6 +35,8 @@ export const auditActionKeys = {
   5: 'ops.oauthAudit',
   6: 'ops.bindAudit',
   7: 'ops.unbindAudit',
+  8: 'import.auditSetup',
+  9: 'import.auditImport',
 } as const
 export const auditResultKeys = { 0: 'admin.applied', 1: 'admin.dismissed' } as const
 export const textureStateKeys = { 0: 'admin.normal', 1: 'admin.hidden' } as const
@@ -46,4 +48,5 @@ export const pointKindKeys = {
   3: 'ops.upload',
   4: 'ops.closet',
   5: 'ops.privacy',
+  6: 'import.points',
 } as const

@@ -1,10 +1,12 @@
 import { operationsMessages } from './operations'
+import { provisionMessages } from './provision'
 import { accountMessages } from './account'
 import { adminMessages } from './admin'
 import { libraryMessages } from './library'
 import { viewerMessages } from './viewer'
 const messages: Record<string, string> = {
   ...operationsMessages,
+  ...provisionMessages,
   ...accountMessages,
   ...adminMessages,
   ...libraryMessages,

@@ -11,13 +11,13 @@ import type {
   ExternalIdentity,
   PluginInfo,
 } from './types'
-const record = (v: unknown): v is Record<string, unknown> =>
+export const record = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 const str = (v: unknown) => typeof v === 'string'
 const texts = (v: Record<string, unknown>, keys: string[]) => keys.every((k) => str(v[k]))
-const num = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v)
+export const num = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v)
 const choice = (v: unknown, values: number[]) => num(v) && values.includes(v)
-const date = (v: unknown) => str(v) && Number.isFinite(Date.parse(v as string))
+export const date = (v: unknown) => str(v) && Number.isFinite(Date.parse(v as string))
 export function isArrayOf<T>(check: (v: unknown) => v is T): (v: unknown) => v is T[] {
   return (v: unknown): v is T[] => Array.isArray(v) && v.every(check)
 }
@@ -77,7 +77,7 @@ export function isAudit(v: unknown): v is AuditEvent {
     record(v) &&
     num(v.id) &&
     texts(v, ['actor', 'target', 'requestId']) &&
-    choice(v.action, [0, 1, 2, 3, 4, 5, 6, 7]) &&
+    choice(v.action, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) &&
     choice(v.result, [0, 1]) &&
     choice(v.targetState, [-1, 0, 1, 2]) &&
     choice(v.targetPermission, [-1, 0, 1, 2]) &&
@@ -130,7 +130,7 @@ export function isWallet(v: unknown): v is Wallet {
         record(e) &&
         num(e.id) &&
         num(e.delta) &&
-        choice(e.kind, [0, 1, 2, 3, 4, 5]) &&
+        choice(e.kind, [0, 1, 2, 3, 4, 5, 6]) &&
         date(e.createdAt),
     )
   )

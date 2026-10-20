@@ -1,4 +1,6 @@
 import { getSite } from './api/site'
+import { getSetup } from './api/provision'
+import { SetupPage, ImportAdmin } from './pages/ProvisionPage'
 import { useResource } from './lib/useResource'
 import { SiteAdmin, PointsPage, CostRules } from './pages/OperationsPage'
 import { ExternalCallback, OAuthConsent } from './pages/AuthorizationPage'
@@ -64,6 +66,7 @@ const adminLinks = [
 ]
 function Site() {
   const site = useResource(getSite)
+  const setup = useResource(getSetup)
   const settings = site.value ?? null
   const authenticatedExternal = useCallback((account: Account, destination: string) => {
     setAccount(account)
@@ -94,7 +97,7 @@ function Site() {
   const separator = hash.indexOf('?')
   const path = separator < 0 ? hash : hash.slice(0, separator)
   const search = separator < 0 ? '' : hash.slice(separator + 1)
-  const sidebar = path.startsWith('/user') || path.startsWith('/admin')
+  const sidebar = !setup.value?.required && (path.startsWith('/user') || path.startsWith('/admin'))
   const home = path === '/'
   const needsLogin =
     !account && (sidebar || path === '/skinlib/upload' || path === '/oauth/authorize')
@@ -124,7 +127,19 @@ function Site() {
     }
   }
   let page: ReactNode
-  if (path === '/oidc/callback')
+  if (setup.value?.required)
+    page = (
+      <SetupPage
+        available={setup.value.available}
+        onComplete={() => {
+          setup.reload()
+          site.reload()
+          navigate('/auth/login')
+        }}
+      />
+    )
+  else if (path === '/setup') page = <Notice>{t('setup.done')}</Notice>
+  else if (path === '/oidc/callback')
     page = <ExternalCallback search={search} onAuthenticated={authenticatedExternal} />
   else if (needsLogin)
     page = (
@@ -159,6 +174,13 @@ function Site() {
   else if (path === '/oauth/authorize') page = <OAuthConsent key={search} search={search} />
   else if (admin && account?.permission === 0)
     page = <Notice tone="error">{t('ops.adminOnly')}</Notice>
+  else if (path === '/admin/import')
+    page =
+      account?.permission === 2 ? (
+        <ImportAdmin />
+      ) : (
+        <Notice tone="error">{t('ops.forbidden')}</Notice>
+      )
   else if (path === '/admin/site')
     page =
       account?.permission === 2 ? (
@@ -213,7 +235,7 @@ function Site() {
         action={<a href="#/skinlib">{t('nav.library')}</a>}
       />
     )
-  if (auth)
+  if (auth && !setup.value?.required)
     return (
       <div className={styles.authPage}>
         {message && <Notice tone="error">{message}</Notice>}
@@ -329,7 +351,10 @@ function Site() {
               {(adminNavigation
                 ? [
                     ...(account?.permission === 2
-                      ? [{ href: '/admin/site', key: 'ops.site', Icon: SettingsIcon }]
+                      ? [
+                          { href: '/admin/site', key: 'ops.site', Icon: SettingsIcon },
+                          { href: '/admin/import', key: 'import.title', Icon: SettingsIcon },
+                        ]
                       : []),
                     ...adminLinks,
                   ]

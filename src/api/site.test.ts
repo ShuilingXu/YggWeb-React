@@ -41,8 +41,8 @@ describe('运营接口契约', () => {
       targetPermission: -1,
       createdAt: '2026-10-18T00:00:00Z',
     }
-    for (const action of [4, 5, 6, 7]) expect(isAudit({ ...base, action })).toBe(true)
-    expect(isAudit({ ...base, action: 8 })).toBe(false)
+    for (const action of [4, 5, 6, 7, 8, 9]) expect(isAudit({ ...base, action })).toBe(true)
+    expect(isAudit({ ...base, action: 10 })).toBe(false)
   })
   it('外部登录仅允许 HTTPS 和本机 HTTP 授权地址', () => {
     expect(isExternalStart({ url: 'https://login.example.org/authorize', state: 'abc' })).toBe(true)
